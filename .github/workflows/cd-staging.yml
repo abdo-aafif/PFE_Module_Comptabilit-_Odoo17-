@@ -35,13 +35,13 @@ jobs:
 
       - name: Determine image tag
         id: tag
-        shell: pwsh
+        shell: bash
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            echo "tag=${{ github.event.inputs.image_tag }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tag=staging-latest" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=staging-latest" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -130,13 +130,13 @@ jobs:
 
       - name: Deployment summary
         if: always()
-        shell: pwsh
+        shell: bash
         run: |
-          Add-Content $env:GITHUB_STEP_SUMMARY "## Déploiement staging"
-          Add-Content $env:GITHUB_STEP_SUMMARY ""
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Image** : ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **URL** : http://localhost:8169"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Base** : staging_db"
-          Add-Content $env:GITHUB_STEP_SUMMARY "- **Commit** : ${{ github.sha }}"
-          Add-Content $env:GITHUB_STEP_SUMMARY ""
-          docker compose -f docker-compose.staging.yml ps 2>$null | Out-String | Add-Content $env:GITHUB_STEP_SUMMARY
+          echo "## Déploiement staging" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image** : ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **URL** : http://localhost:8169" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Base** : staging_db" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit** : ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          docker compose -f docker-compose.staging.yml ps >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
