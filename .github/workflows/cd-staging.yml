@@ -1,7 +1,5 @@
 name: CD - Deploy to Local Staging
 
-# Déclenchement : après le succès du workflow CI (push sur 17.0 ou main)
-# OU déclenchement manuel via l'interface GitHub.
 on:
   workflow_run:
     workflows: ['CI - Lint, Tests, Security, Build']
@@ -21,10 +19,7 @@ env:
 jobs:
   deploy-local-staging:
     name: Deploy on local self-hosted runner
-    # IMPORTANT : self-hosted runner installé sur TA machine.
-    # Voir docs/SELF_HOSTED_RUNNER.md pour la procédure d'installation.
     runs-on: self-hosted
-    # Ne tourne que si CI a réussi
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
@@ -35,13 +30,13 @@ jobs:
 
       - name: Determine image tag
         id: tag
-        shell: bash
+        shell: powershell
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=staging-latest" >> "$GITHUB_OUTPUT"
-          fi
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "tag=${{ github.event.inputs.image_tag }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } else {
+            "tag=staging-latest" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -51,92 +46,111 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull new image
-        shell: bash
+        shell: powershell
         run: |
-          docker pull "${IMAGE_NAME}:${{ steps.tag.outputs.tag }}"
+          docker pull "${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}"
 
       - name: Backup staging database (if exists)
-        shell: bash
+        shell: powershell
         continue-on-error: true
         run: |
-          mkdir -p ./backups
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          if docker ps -q -f name=omega_compta_staging_db | grep -q .; then
-            echo "Backup avant déploiement..."
-            docker exec omega_compta_staging_db pg_dump -U odoo staging_db \
-              > "./backups/staging_pre_deploy_${TIMESTAMP}.sql" || \
-              echo "::warning::Backup failed (DB probably not initialised yet)"
-            ls -lh ./backups/
-          else
-            echo "Aucun container existant — pas de backup nécessaire."
-          fi
+          New-Item -ItemType Directory -Force -Path ./backups | Out-Null
+          $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+          $running = docker ps -q -f name=omega_compta_staging_db
+          if ($running) {
+            Write-Host "Backup avant déploiement..."
+            docker exec omega_compta_staging_db pg_dump -U odoo staging_db `
+              | Out-File -FilePath "./backups/staging_pre_deploy_$timestamp.sql" -Encoding utf8
+            Get-ChildItem ./backups | Format-Table Name, Length, LastWriteTime
+          } else {
+            Write-Host "Aucun container existant — pas de backup nécessaire."
+          }
 
       - name: Deploy with docker-compose
-        shell: bash
+        shell: powershell
         env:
           ODOO_IMAGE: ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
         run: |
-          echo "Déploiement de l'image: ${ODOO_IMAGE}"
+          Write-Host "Déploiement de l'image: $env:ODOO_IMAGE"
           docker compose -f docker-compose.staging.yml down
           docker compose -f docker-compose.staging.yml up -d
 
       - name: Wait for Odoo to be ready
-        shell: bash
+        shell: powershell
         run: |
-          echo "Attente du démarrage d'Odoo (max 180s)..."
-          for i in {1..36}; do
-            if curl -fsS http://localhost:8169/web/login >/dev/null 2>&1; then
-              echo "Odoo répond sur http://localhost:8169 (après ${i}*5s)"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "::error::Timeout : Odoo ne répond pas sur localhost:8169"
+          Write-Host "Attente du démarrage d'Odoo (max 180s)..."
+          for ($i = 1; $i -le 36; $i++) {
+            try {
+              $resp = Invoke-WebRequest -Uri http://localhost:8169/web/login -UseBasicParsing -TimeoutSec 5
+              if ($resp.StatusCode -eq 200) {
+                Write-Host "Odoo répond sur http://localhost:8169 (après $($i * 5)s)"
+                exit 0
+              }
+            } catch {}
+            Start-Sleep -Seconds 5
+          }
+          Write-Host "::error::Timeout : Odoo ne répond pas sur localhost:8169"
           docker compose -f docker-compose.staging.yml logs odoo --tail=200
           exit 1
 
       - name: Smoke tests
-        shell: bash
+        shell: powershell
         run: |
-          echo "Smoke test 1 : page de login accessible..."
-          curl -fsS http://localhost:8169/web/login | grep -qi 'odoo' && \
-            echo "PASS : page login OK"
+          Write-Host "Smoke test 1 : page de login accessible..."
+          try {
+            $resp = Invoke-WebRequest -Uri http://localhost:8169/web/login -UseBasicParsing
+            if ($resp.Content -match "odoo") {
+              Write-Host "PASS : page login OK"
+            } else {
+              Write-Host "::warning::Page login ne contient pas 'odoo'"
+            }
+          } catch {
+            Write-Host "::error::Page login inaccessible : $_"
+            exit 1
+          }
 
-          echo "Smoke test 2 : module installé..."
-          docker exec omega_compta_staging_db psql -U odoo -d staging_db \
-            -tAc "SELECT state FROM ir_module_module WHERE name='${MODULE_NAME}'" | \
-            grep -q 'installed' && echo "PASS : module installé"
+          Write-Host "Smoke test 2 : module installé..."
+          $state = docker exec omega_compta_staging_db psql -U odoo -d staging_db `
+            -tAc "SELECT state FROM ir_module_module WHERE name='${{ env.MODULE_NAME }}'"
+          if ($state -match "installed") {
+            Write-Host "PASS : module installé"
+          } else {
+            Write-Host "::warning::Module non installé (state: $state)"
+          }
 
-          echo "Smoke test 3 : aucune erreur récente dans les logs..."
-          ERRORS=$(docker compose -f docker-compose.staging.yml logs odoo --tail=200 2>&1 | \
-            grep -cE "ERROR|CRITICAL|Traceback" || true)
-          if [ "${ERRORS}" -gt 0 ]; then
-            echo "::warning::${ERRORS} message(s) d'erreur récents dans les logs"
+          Write-Host "Smoke test 3 : aucune erreur récente dans les logs..."
+          $logs = docker compose -f docker-compose.staging.yml logs odoo --tail=200 2>&1
+          $errors = ($logs | Select-String -Pattern "ERROR|CRITICAL|Traceback").Count
+          if ($errors -gt 0) {
+            Write-Host "::warning::$errors message(s) d'erreur récents dans les logs"
             docker compose -f docker-compose.staging.yml logs odoo --tail=50
-          else
-            echo "PASS : pas d'erreurs récentes"
-          fi
+          } else {
+            Write-Host "PASS : pas d'erreurs récentes"
+          }
 
       - name: Cleanup old Docker images
         if: always()
         continue-on-error: true
-        shell: bash
+        shell: powershell
         run: |
-          # Garde les 3 dernières images, supprime les autres
           docker image prune -f
-          docker images "${IMAGE_NAME}" --format "{{.ID}} {{.CreatedAt}}" | \
-            sort -k2 -r | tail -n +4 | awk '{print $1}' | \
-            xargs -r docker rmi -f || true
+          $images = docker images "${{ env.IMAGE_NAME }}" --format "{{.ID}} {{.CreatedAt}}" |
+            Sort-Object -Descending | Select-Object -Skip 3
+          foreach ($img in $images) {
+            $id = ($img -split " ")[0]
+            docker rmi -f $id
+          }
 
       - name: Deployment summary
         if: always()
-        shell: bash
+        shell: powershell
         run: |
-          echo "## Déploiement staging" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Image** : ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **URL** : http://localhost:8169" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Base** : staging_db" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Commit** : ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          docker compose -f docker-compose.staging.yml ps >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          Add-Content $env:GITHUB_STEP_SUMMARY "## Déploiement staging"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Image** : ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}"
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **URL** : http://localhost:8169"
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Base** : staging_db"
+          Add-Content $env:GITHUB_STEP_SUMMARY "- **Commit** : ${{ github.sha }}"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+          docker compose -f docker-compose.staging.yml ps 2>$null |
+            Out-String | Add-Content $env:GITHUB_STEP_SUMMARY
