@@ -13,22 +13,22 @@ USER root
 
 # Dépendances Python additionnelles du module
 COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt \
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 # Copie du module dans le bon dossier d'addons
-COPY --chown=odoo:odoo . /mnt/extra-addons/315_v3_gev2_claudeCopieCopie
+COPY --chown=odoo:odoo . /mnt/extra-addons/pfe
 
 # Nettoyage des artefacts qui ne doivent PAS finir dans l'image
 RUN rm -rf \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/docs5 \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/.git \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/.github \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/.claude \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/__pycache__ \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/Dockerfile \
-    /mnt/extra-addons/315_v3_gev2_claudeCopieCopie/docker-compose*.yml \
-    && find /mnt/extra-addons/315_v3_gev2_claudeCopieCopie -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+    /mnt/extra-addons/pfe/docs5 \
+    /mnt/extra-addons/pfe/.git \
+    /mnt/extra-addons/pfe/.github \
+    /mnt/extra-addons/pfe/.claude \
+    /mnt/extra-addons/pfe/__pycache__ \
+    /mnt/extra-addons/pfe/Dockerfile \
+    /mnt/extra-addons/pfe/docker-compose*.yml \
+    && find /mnt/extra-addons/pfe -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
 # Configuration Odoo staging
 COPY odoo.conf /etc/odoo/odoo.conf
