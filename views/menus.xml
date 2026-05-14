@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====================================================================
+         PUSH 1 — Menus minimaux pour 3.1.1 (Plan Comptable + Analytique)
+         ====================================================================
+         Les menus seront enrichis à chaque push :
+           P2 → Pièces comptables, Récurrentes, Lettrage
+           P4 → Banque & Caisse, Importer un Relevé, Rapprochement
+           P5 → Déclarations Fiscales, SIMPL-TVA
+           P6 → Rapports Comptables (Balance, Grand Livre, Balance âgée, ...)
+           P7 → États Financiers (Bilan, CPC, Flux)
+           P8 → Immobilisations
+           P9 → Clôture Comptable
+           P10 → Multi-Devises (taux + écarts)
+         ==================================================================== -->
+
+    <!-- 1. Menu Principal -->
+    <menuitem id="menu_comptabilite_maroc_root"
+              name="Comptabilité"
+              sequence="10"
+              groups="account.group_account_user,account.group_account_manager"
+              web_icon="account,static/description/icon.png"/>
+
+    <!-- 2. Tableau de bord -->
+    <menuitem id="menu_compta_dashboard"
+              name="Tableau de bord"
+              parent="menu_comptabilite_maroc_root"
+              action="account.open_account_journal_dashboard_kanban"
+              sequence="1"/>
+
+    <!-- 3. Ventes (accès rapide aux factures clients) -->
+    <menuitem id="menu_compta_ventes"
+              name="Ventes"
+              parent="menu_comptabilite_maroc_root"
+              sequence="2"/>
+    <menuitem id="menu_compta_factures_clients"
+              name="Factures Clients"
+              parent="menu_compta_ventes"
+              action="account.action_move_out_invoice_type"
+              sequence="1"/>
+
+    <!-- 4. Achats (accès rapide aux factures fournisseurs) -->
+    <menuitem id="menu_compta_achats"
+              name="Achats"
+              parent="menu_comptabilite_maroc_root"
+              sequence="3"/>
+    <menuitem id="menu_compta_factures_fournisseurs"
+              name="Factures Fournisseurs"
+              parent="menu_compta_achats"
+              action="account.action_move_in_invoice_type"
+              sequence="1"/>
+
+    <!-- 5. Rapports (Reporting Analytique uniquement en P1) -->
+    <menuitem id="menu_compta_reporting"
+              name="Rapports Comptables"
+              parent="menu_comptabilite_maroc_root"
+              sequence="9"/>
+
+    <menuitem id="menu_compta_reporting_analytic"
+              name="Suivi Analytique (par Projet / Centre de coût)"
+              parent="menu_compta_reporting"
+              action="action_compta_analytic_lines"
+              sequence="1"/>
+
+    <!-- 6. Configuration (Plan Comptable + Journaux + Taxes + Analytique) -->
+    <menuitem id="menu_compta_configuration"
+              name="Configuration"
+              parent="menu_comptabilite_maroc_root"
+              sequence="100"/>
+
+    <menuitem id="menu_compta_coa"
+              name="Plan Comptable (PCGE Marocain)"
+              parent="menu_compta_configuration"
+              action="account.action_account_form"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_journals"
+              name="Journaux Comptables"
+              parent="menu_compta_configuration"
+              action="account.action_account_journal_form"
+              sequence="2"/>
+
+    <menuitem id="menu_compta_taxes"
+              name="Taxes (TVA Marocaine)"
+              parent="menu_compta_configuration"
+              action="account.action_tax_form"
+              sequence="3"/>
+
+    <!-- ── COMPTABILITÉ ANALYTIQUE (3.1.1 CDC) ──────────────────────
+         3 niveaux exposés :
+         1. Comptes Analytiques  : les "projets" / centres de coût
+         2. Plans Analytiques    : les axes d'analyse
+         3. Règles Distribution  : auto compte général → analytique
+    ──────────────────────────────────────────────────────────────── -->
+    <menuitem id="menu_compta_analytique"
+              name="Comptabilité Analytique"
+              parent="menu_compta_configuration"
+              sequence="4"/>
+
+    <menuitem id="menu_compta_analytique_comptes"
+              name="Comptes Analytiques (Projets / Centres de coût)"
+              parent="menu_compta_analytique"
+              action="analytic.action_analytic_account_form"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_analytique_plans"
+              name="Plans Analytiques (Axes d'analyse)"
+              parent="menu_compta_analytique"
+              action="analytic.account_analytic_plan_action"
+              sequence="2"/>
+
+    <menuitem id="menu_compta_analytique_distribution"
+              name="Règles de Distribution Automatique"
+              parent="menu_compta_analytique"
+              action="action_compta_analytic_distribution_model"
+              sequence="3"/>
+</odoo>

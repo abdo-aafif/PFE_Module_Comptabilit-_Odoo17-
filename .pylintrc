@@ -1,0 +1,37 @@
+[MASTER]
+load-plugins=pylint_odoo
+score=n
+ignore=docs5,venv,__pycache__,.git,.github
+
+[ODOOLINT]
+manifest-required-authors=Custom
+manifest-required-keys=name,version,license,depends
+manifest-deprecated-keys=description
+license-allowed=LGPL-3,AGPL-3,Other OSI approved licence
+
+[MESSAGES CONTROL]
+# Désactivation des règles trop bruyantes pour un PFE.
+# On garde toutes les règles spécifiques Odoo (préfixe odoolint-).
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    C0103,  # invalid-name (Odoo utilise des noms style snake_case sans contrainte)
+    R0903,  # too-few-public-methods
+    R0913,  # too-many-arguments
+    R0914,  # too-many-locals
+    W0511,  # fixme (TODO/FIXME tolérés)
+    W0613,  # unused-argument
+    R0902,  # too-many-instance-attributes
+    R0912,  # too-many-branches
+    R0915,  # too-many-statements
+    C0301,  # line-too-long (géré par flake8 --max-line-length=120)
+
+enable=
+    odoolint
+
+[FORMAT]
+max-line-length=120
+
+[REPORTS]
+output-format=colorized

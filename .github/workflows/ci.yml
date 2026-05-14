@@ -1,0 +1,262 @@
+name: CI - Lint, Tests, Security, Build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['main', '17.0']
+  workflow_dispatch:
+
+env:
+  MODULE_NAME: '315_v3_gev2_claudeCopieCopie'
+  ODOO_VERSION: '17.0'
+  PYTHON_VERSION: '3.10'
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────────────────
+  #  JOB 1 — LINT (pylint-odoo + flake8 + black + manifest)
+  # ──────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install linting tools
+        run: |
+          pip install --upgrade pip
+          pip install "pylint-odoo>=9.0" flake8 black isort
+
+      - name: Run pylint-odoo
+        continue-on-error: true
+        run: |
+          pylint --rcfile=.pylintrc \
+                 --load-plugins=pylint_odoo \
+                 --valid-odoo-versions=${{ env.ODOO_VERSION }} \
+                 models/ wizard/ tests/ || true
+
+      - name: Run flake8
+        run: |
+          flake8 models/ wizard/ tests/ \
+            --max-line-length=120 \
+            --ignore=E501,W503,E203,E402 \
+            --exclude=__pycache__,docs5,venv
+
+      - name: Check black formatting
+        continue-on-error: true
+        run: |
+          black --check --line-length=120 models/ wizard/ tests/ || \
+            echo "::warning::Black formatting suggestions available — run 'black models/ wizard/ tests/' to apply."
+
+      - name: Validate manifest
+        run: |
+          python -c "
+          import ast, sys
+          with open('__manifest__.py') as f:
+              manifest = ast.literal_eval(f.read())
+          required = ['name', 'version', 'depends', 'data', 'license']
+          missing = [k for k in required if k not in manifest]
+          if missing:
+              print('::error::Missing manifest keys:', missing)
+              sys.exit(1)
+          print('Manifest OK:', manifest['name'], 'v' + manifest['version'])
+          "
+
+      - name: Validate XML files
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y libxml2-utils
+          find views wizard reports data security -name '*.xml' -print0 | \
+            xargs -0 -I{} xmllint --noout {}
+
+  # ──────────────────────────────────────────────────────────────────────
+  #  JOB 2 — TESTS Odoo (avec PostgreSQL service)
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    name: Odoo Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U odoo"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: addons/${{ env.MODULE_NAME }}
+
+      - name: Checkout Odoo 17.0
+        uses: actions/checkout@v4
+        with:
+          repository: odoo/odoo
+          ref: ${{ env.ODOO_VERSION }}
+          path: odoo-server
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            postgresql-client wkhtmltopdf libldap2-dev libsasl2-dev \
+            libjpeg-dev zlib1g-dev libfreetype6-dev libxml2-dev libxslt-dev
+
+      - name: Install Odoo + module Python dependencies
+        run: |
+          pip install --upgrade pip wheel
+          pip install -r odoo-server/requirements.txt
+          pip install -r addons/${{ env.MODULE_NAME }}/requirements.txt
+          pip install coverage
+
+      - name: Create test database
+        env:
+          PGPASSWORD: odoo
+        run: |
+          psql -h localhost -U odoo -d postgres -c "CREATE DATABASE test_omega;"
+
+      - name: Run Odoo tests with coverage
+        run: |
+          cd odoo-server
+          coverage run --source=../addons/${{ env.MODULE_NAME }} \
+            ./odoo-bin \
+              --addons-path=addons,../addons \
+              --database=test_omega \
+              --db_host=localhost \
+              --db_port=5432 \
+              --db_user=odoo \
+              --db_password=odoo \
+              --init=${{ env.MODULE_NAME }} \
+              --test-enable \
+              --test-tags=/${{ env.MODULE_NAME }} \
+              --stop-after-init \
+              --without-demo=all \
+              --log-level=test \
+              --log-handler=odoo.tests:INFO 2>&1 | tee odoo_test.log
+
+      - name: Verify no test failures
+        run: |
+          if grep -E "FAIL: |ERROR: |Traceback " odoo-server/odoo_test.log; then
+            echo "::error::Test failures detected"
+            exit 1
+          fi
+          PASSED=$(grep -cE "ok$" odoo-server/odoo_test.log || true)
+          echo "::notice::Tests passed: $PASSED"
+
+      - name: Coverage report
+        if: always()
+        run: |
+          cd odoo-server
+          coverage report -m --skip-empty || true
+          coverage xml -o ../coverage.xml || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            odoo-server/odoo_test.log
+            coverage.xml
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────
+  #  JOB 3 — SÉCURITÉ (bandit + safety)
+  # ──────────────────────────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install scanners
+        run: pip install bandit safety
+
+      - name: Bandit security scan
+        continue-on-error: true
+        run: |
+          bandit -r models/ wizard/ -ll -f txt -o bandit_report.txt || true
+          cat bandit_report.txt
+
+      - name: Safety vulnerability check
+        continue-on-error: true
+        run: safety check -r requirements.txt --short-report || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: bandit_report.txt
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────
+  #  JOB 4 — BUILD IMAGE DOCKER + PUSH GHCR
+  # ──────────────────────────────────────────────────────────────────────
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/omega-compta
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=raw,value=staging-latest,enable=${{ github.ref_name == '17.0' || github.ref_name == 'main' }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

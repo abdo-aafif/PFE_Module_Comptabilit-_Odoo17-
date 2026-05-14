@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         COMPTABILITÉ ANALYTIQUE — Comptes Analytiques (3.1.1 CDC)
+         ================================================================
+         Ce fichier ajoute :
+         1. Action vers les Modèles de Distribution Automatique
+            (règle : préfixe de compte → compte(s) analytique(s))
+         2. Action vers le Reporting Analytique
+            (suivi charges/produits par projet / centre de coût)
+         ================================================================ -->
+
+    <!-- 1. Action : Modèles de Distribution Analytique Automatique
+         Permet de configurer des règles du type :
+         "Tout compte commençant par '61' → 100% Projet A"
+         "Tout compte commençant par '7'  → 60% Projet B + 40% Projet C"
+         Ces règles remplissent analytic_distribution automatiquement
+         lors de la saisie d'une écriture ou d'une facture. -->
+    <record id="action_compta_analytic_distribution_model" model="ir.actions.act_window">
+        <field name="name">Règles de Distribution Analytique</field>
+        <field name="res_model">account.analytic.distribution.model</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez une règle de distribution analytique automatique
+            </p>
+            <p>
+                Exemple : préfixe de compte <b>61</b> →
+                affecter automatiquement 100% au compte analytique <b>Projet A</b>
+                sur chaque ligne d'écriture utilisant un compte 61xx.
+            </p>
+        </field>
+    </record>
+
+    <!-- 2. Action : Suivi Analytique (Reporting)
+         Affiche toutes les lignes analytiques générées automatiquement
+         lors de la validation des écritures/factures.
+         Groupées par compte analytique (projet/centre de coût) par défaut. -->
+    <record id="action_compta_analytic_lines" model="ir.actions.act_window">
+        <field name="name">Suivi Analytique — Charges / Produits par Projet</field>
+        <field name="res_model">account.analytic.line</field>
+        <field name="view_mode">pivot,list,graph</field>
+        <field name="context">{'search_default_group_by_account': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune ligne analytique enregistrée
+            </p>
+            <p>
+                Les lignes analytiques sont créées automatiquement lors de la
+                <b>validation</b> d'une écriture comptable ou d'une facture
+                sur laquelle une distribution analytique a été saisie.
+            </p>
+        </field>
+    </record>
+
+</odoo>
