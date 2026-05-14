@@ -15,7 +15,7 @@ on:
         default: 'staging-latest'
 
 env:
-  MODULE_NAME: '315_v3_gev2_claudeCopieCopie'
+  MODULE_NAME: 'pfe'
   IMAGE_NAME: 'ghcr.io/${{ github.repository_owner }}/omega-compta'
 
 jobs:
