@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
 
 env:
-  MODULE_NAME: '315_v3_gev2_claudeCopieCopie'
+  MODULE_NAME: 'pfe'
   ODOO_VERSION: '17.0'
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.12'
 
 jobs:
 

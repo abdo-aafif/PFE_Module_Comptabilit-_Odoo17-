@@ -1,4 +1,3 @@
-from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 
 
