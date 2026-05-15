@@ -8,7 +8,7 @@ set -e
 : "${USER:=odoo}"
 : "${PASSWORD:=odoo}"
 : "${DB_NAME:=staging_db}"
-: "${MODULE_NAME:=315_v3_gev2_claudeCopieCopie}"
+: "${MODULE_NAME:=pfe}"
 
 echo "[entrypoint] Attente de PostgreSQL ${HOST}:${PORT}..."
 until PGPASSWORD="${PASSWORD}" psql -h "${HOST}" -p "${PORT}" -U "${USER}" -d postgres -c '\q' 2>/dev/null; do
