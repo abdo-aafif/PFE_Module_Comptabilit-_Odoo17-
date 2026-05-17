@@ -33,15 +33,97 @@
         </field>
     </record>
 
-    <!-- 2. Action : Suivi Analytique (Reporting)
+    <!-- 2. Vue Liste personnalisée : affiche clairement l'origine de chaque ligne
+         (pièce comptable, journal, compte général, partenaire) pour que
+         l'utilisateur identifie d'où vient chaque ligne sans recherche manuelle.
+         Les colonnes des plans analytiques (Projets, Départements, Internal...)
+         sont ajoutées dynamiquement par Odoo via _get_view(). -->
+    <record id="view_compta_analytic_line_tree" model="ir.ui.view">
+        <field name="name">account.analytic.line.compta.tree</field>
+        <field name="model">account.analytic.line</field>
+        <field name="arch" type="xml">
+            <tree string="Lignes analytiques" create="false" edit="false">
+                <field name="date"/>
+                <field name="move_line_id" string="Pièce comptable"
+                       options="{'no_create': True}"/>
+                <field name="journal_id" string="Journal"
+                       options="{'no_create': True}"/>
+                <field name="general_account_id" string="Compte général"
+                       options="{'no_create': True}"/>
+                <field name="partner_id" string="Partenaire (Client / Fournisseur)"
+                       options="{'no_create': True}"/>
+                <field name="name" string="Libellé / Description"/>
+                <!-- account_id = colonne du plan principal (Projets).
+                     Odoo injecte automatiquement les colonnes pour les autres
+                     plans (Départements, Internal, ...) juste après. -->
+                <field name="account_id" string="Projet / Centre de coût"
+                       options="{'no_create': True}"/>
+                <field name="ref" string="Référence" optional="hide"/>
+                <field name="category" string="Catégorie" optional="hide"/>
+                <field name="company_id" string="Société" optional="hide"
+                       groups="base.group_multi_company"/>
+                <field name="amount" string="Montant" sum="Total"/>
+                <field name="currency_id" column_invisible="True"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue Recherche enrichie : filtres par type d'opération et origine -->
+    <record id="view_compta_analytic_line_search" model="ir.ui.view">
+        <field name="name">account.analytic.line.compta.search</field>
+        <field name="model">account.analytic.line</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une ligne analytique">
+                <field name="name" string="Libellé"/>
+                <field name="move_line_id" string="Pièce comptable"/>
+                <field name="general_account_id" string="Compte général"/>
+                <field name="partner_id"/>
+                <field name="compta_account_id" string="Compte Analytique (tout plan)"/>
+                <field name="journal_id"/>
+                <separator/>
+                <filter name="filter_charges" string="Charges (montants négatifs)"
+                        domain="[('amount', '&lt;', 0)]"/>
+                <filter name="filter_produits" string="Produits (montants positifs)"
+                        domain="[('amount', '&gt;', 0)]"/>
+                <separator/>
+                <filter name="filter_this_month" string="Ce mois-ci"
+                        domain="[('date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_this_year" string="Cette année"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Grouper par">
+                    <filter name="group_by_compta_account" string="Compte Analytique (tout plan)"
+                            context="{'group_by': 'compta_account_id'}"/>
+                    <filter name="group_by_partner" string="Partenaire"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_by_journal" string="Journal"
+                            context="{'group_by': 'journal_id'}"/>
+                    <filter name="group_by_general_account" string="Compte général"
+                            context="{'group_by': 'general_account_id'}"/>
+                    <filter name="group_by_move" string="Pièce comptable"
+                            context="{'group_by': 'move_line_id'}"/>
+                    <filter name="group_by_date" string="Date"
+                            context="{'group_by': 'date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- 3. Action : Suivi Analytique (Reporting)
          Affiche toutes les lignes analytiques générées automatiquement
          lors de la validation des écritures/factures.
-         Groupées par compte analytique (projet/centre de coût) par défaut. -->
+         Groupées par compte_analytique unifié (tous plans confondus). -->
     <record id="action_compta_analytic_lines" model="ir.actions.act_window">
-        <field name="name">Suivi Analytique — Charges / Produits par Projet</field>
+        <field name="name">Suivi Analytique — Charges / Produits par Plan Comptable Analytique</field>
         <field name="res_model">account.analytic.line</field>
-        <field name="view_mode">pivot,list,graph</field>
-        <field name="context">{'search_default_group_by_account': 1}</field>
+        <field name="view_mode">pivot,tree,graph</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'sequence': 1}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_compta_analytic_line_tree'), 'sequence': 2}),
+            (0, 0, {'view_mode': 'graph', 'sequence': 3}),
+        ]"/>
+        <field name="search_view_id" ref="view_compta_analytic_line_search"/>
+        <field name="context">{'search_default_group_by_compta_account': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Aucune ligne analytique enregistrée
@@ -50,6 +132,7 @@
                 Les lignes analytiques sont créées automatiquement lors de la
                 <b>validation</b> d'une écriture comptable ou d'une facture
                 sur laquelle une distribution analytique a été saisie.
+                Tous les plans (Projets, Départements, Internal…) sont affichés.
             </p>
         </field>
     </record>

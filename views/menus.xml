@@ -1,19 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ====================================================================
-         PUSH 1 — Menus minimaux pour 3.1.1 (Plan Comptable + Analytique)
-         ====================================================================
-         Les menus seront enrichis à chaque push :
-           P2 → Pièces comptables, Récurrentes, Lettrage
-           P4 → Banque & Caisse, Importer un Relevé, Rapprochement
-           P5 → Déclarations Fiscales, SIMPL-TVA
-           P6 → Rapports Comptables (Balance, Grand Livre, Balance âgée, ...)
-           P7 → États Financiers (Bilan, CPC, Flux)
-           P8 → Immobilisations
-           P9 → Clôture Comptable
-           P10 → Multi-Devises (taux + écarts)
-         ==================================================================== -->
-
     <!-- 1. Menu Principal -->
     <menuitem id="menu_comptabilite_maroc_root"
               name="Comptabilité"
@@ -57,7 +43,7 @@
               sequence="9"/>
 
     <menuitem id="menu_compta_reporting_analytic"
-              name="Suivi Analytique (par Projet / Centre de coût)"
+              name="Suivi Analytique (par Plan Comptable Analytique)"
               parent="menu_compta_reporting"
               action="action_compta_analytic_lines"
               sequence="1"/>
