@@ -25,4 +25,10 @@ Ou tous les tests post-installation du module ::
 # Import explicite de chaque module de tests : Odoo se base sur cette
 # importation pour enregistrer les classes ``TransactionCase`` dans son
 # registre interne ``odoo.tests.loader``.
+#
+# Note linting : import à effet de bord intentionnel. Aucun symbole
+# n'est référencé directement ici, c'est le simple fait d'importer le
+# module qui déclenche l'enregistrement des classes de test. La règle
+# F401 est désactivée globalement pour tous les ``__init__.py`` du
+# module via le fichier ``.flake8`` à la racine.
 from . import test_plan_comptable

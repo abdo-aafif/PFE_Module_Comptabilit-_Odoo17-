@@ -19,4 +19,11 @@ coexistent (cf. ``account_analytic_line.py``).
 # Extension de ``account.analytic.line`` : ajoute le champ calculé
 # ``compta_account_id`` permettant un groupement unifié de TOUS les plans
 # analytiques dans le rapport "Suivi Analytique".
+#
+# Note linting : cet import est intentionnellement « non utilisé » au
+# sens de flake8 (F401). Il déclenche le chargement du module pour
+# qu'Odoo enregistre la classe ``AccountAnalyticLine`` et applique
+# l'héritage ``_inherit = 'account.analytic.line'``. La règle F401 est
+# désactivée globalement pour tous les ``__init__.py`` du module via
+# le fichier ``.flake8`` à la racine.
 from . import account_analytic_line

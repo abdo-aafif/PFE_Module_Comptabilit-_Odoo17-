@@ -1,0 +1,46 @@
+# =============================================================================
+#  Configuration flake8 — Module "comptabilité Omega Soft"
+# -----------------------------------------------------------------------------
+#  flake8 lit ce fichier automatiquement lorsqu'il s'exécute depuis la racine
+#  du module. Les directives ici complètent (sans les écraser) les options
+#  passées en CLI dans :
+#      • .pre-commit-config.yaml  (hook flake8)
+#      • .github/workflows/ci.yml (job "Lint & Code Quality")
+#
+#  Convention : on aligne la longueur de ligne et les règles ignorées sur
+#  ce qui est déjà configuré côté CI/pre-commit, afin que l'exécution locale
+#  via ``flake8 .`` donne le même résultat que la pipeline.
+# =============================================================================
+[flake8]
+
+# Longueur de ligne maximale : 120 caractères (cohérent avec black --line-length=120).
+max-line-length = 120
+
+# Règles ignorées globalement, alignées avec la configuration CI :
+#   E501  — line too long  : déjà géré par max-line-length, doublon historique
+#   W503  — line break before binary operator  : incompatible avec PEP 8 moderne
+#   E203  — whitespace before ':'             : conflit avec le formatage de black
+#   E402  — module level import not at top    : nécessaire dans certains __init__
+ignore = E501, W503, E203, E402
+
+# Exclusions de chemins : fichiers et dossiers à ne PAS analyser.
+exclude =
+    __pycache__,
+    .git,
+    .venv,
+    venv,
+    vm,
+    build,
+    dist,
+    *.egg-info
+
+# -----------------------------------------------------------------------------
+#  Exceptions ciblées par fichier
+# -----------------------------------------------------------------------------
+#  F401 — "imported but unused" : volontairement ignoré sur tous les
+#  ``__init__.py`` du module. Ces fichiers réalisent des imports à effet
+#  de bord (chargement de modèles, wizards, tests) requis par Odoo pour
+#  enregistrer les classes dans son registre interne. Ce ne sont PAS des
+#  imports inutiles malgré ce que pense flake8.
+per-file-ignores =
+    __init__.py:F401
