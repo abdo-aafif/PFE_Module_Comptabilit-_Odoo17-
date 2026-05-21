@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2. Action explicite pour garantir à 100% que la création manuelle s'ouvre comme une Opération Diverse pure -->
+    <record id="action_compta_saisie_manuelle" model="ir.actions.act_window">
+        <field name="name">Saisies Manuelles (OD, A-Nouveaux)</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('move_type', '=', 'entry'), ('journal_id.type', 'not in', ('bank', 'cash'))]</field>
+        <field name="context">{'default_move_type': 'entry', 'view_no_maturity': True}</field>
+        <field name="view_id" ref="account.view_move_tree"/>
+    </record>
+
+    <!-- 6. Vue tree partagée pour le Lettrage -->
+    <record id="view_account_move_line_lettrage_tree" model="ir.ui.view">
+        <field name="name">account.move.line.lettrage.tree</field>
+        <field name="model">account.move.line</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree string="Lettrage des Comptes"
+                  create="false" delete="false" edit="false"
+                  decoration-warning="not reconciled and amount_residual != 0"
+                  decoration-success="reconciled">
+                <field name="date"/>
+                <field name="move_id" string="Pièce"/>
+                <field name="journal_id" string="Journal" optional="show"/>
+                <field name="account_id" string="Compte"/>
+                <field name="partner_id" string="Partenaire"/>
+                <field name="name" string="Libellé" optional="show"/>
+                <field name="debit" sum="Total Débit"/>
+                <field name="credit" sum="Total Crédit"/>
+                <field name="amount_residual" string="Solde restant" sum="Solde"/>
+                <field name="full_reconcile_id" string="Lettrage #"/>
+                <field name="reconciled" column_invisible="1"/>
+                <field name="balance" column_invisible="1"/>
+                <field name="company_id" column_invisible="1"/>
+                <field name="company_currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 6.bis Action : Écritures À Lettrer (non lettrées, groupées par partenaire) -->
+    <record id="action_compta_lettrage_comptes" model="ir.actions.act_window">
+        <field name="name">Écritures à Lettrer</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_account_move_line_lettrage_tree"/>
+        <field name="domain">[
+            ('account_id.reconcile', '=', True),
+            ('parent_state', '=', 'posted'),
+            ('display_type', 'not in', ['line_section', 'line_note']),
+            ('reconciled', '=', False),
+            ('move_id.move_type', 'not in', ['out_refund', 'in_refund']),
+        ]</field>
+        <field name="context">{'search_default_partner': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucune écriture en attente de lettrage.</p>
+            <p>
+                <b>Comment lettrer ?</b><br/>
+                1. Dépliez un partenaire<br/>
+                2. Cochez la facture (Débit) + son paiement (Crédit)<br/>
+                3. Menu <b>Action → Lettrer les écritures sélectionnées</b>
+            </p>
+        </field>
+    </record>
+
+    <!-- 6.ter Action : Historique Lettrage (lettrées, groupées par numéro de lettrage) -->
+    <record id="action_compta_lettrage_historique" model="ir.actions.act_window">
+        <field name="name">Historique du Lettrage</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_account_move_line_lettrage_tree"/>
+        <field name="domain">[
+            ('account_id.reconcile', '=', True),
+            ('parent_state', '=', 'posted'),
+            ('display_type', 'not in', ['line_section', 'line_note']),
+            ('reconciled', '=', True),
+        ]</field>
+        <field name="context">{'search_default_full_reconcile': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aucun lettrage enregistré.</p>
+        </field>
+    </record>
+
+    <!-- 6.ter Action serveur : Lettrer les lignes sélectionnées -->
+    <record id="action_server_lettrer_lignes" model="ir.actions.server">
+        <field name="name">Lettrer les écritures sélectionnées</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="binding_model_id" ref="account.model_account_move_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    # Filtrer : uniquement lignes non lettrées sur comptes réconciliables
+    to_reconcile = records.filtered(
+        lambda l: not l.reconciled
+        and l.account_id.reconcile
+        and l.parent_state == 'posted'
+    )
+    if not to_reconcile:
+        raise UserError("Aucune ligne lettrable dans la sélection (déjà lettrées ou compte non réconciliable).")
+
+    # Vérifier qu'elles sont sur le même compte
+    accounts = to_reconcile.account_id
+    if len(accounts) != 1:
+        raise UserError(
+            "Toutes les lignes doivent être sur le MÊME compte pour être lettrées.\n"
+            "Comptes trouvés : %s" % ", ".join(accounts.mapped('display_name'))
+        )
+
+    # Vérifier équilibre débit/crédit
+    total = sum(to_reconcile.mapped('balance'))
+    if abs(total) &gt; 0.01:
+        raise UserError(
+            "Le débit et le crédit ne s'équilibrent pas (écart : %.2f).\n"
+            "Ajustez votre sélection ou créez une écriture d'écart." % total
+        )
+
+    to_reconcile.reconcile()
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Lettrage effectué',
+            'message': '%d ligne(s) lettrée(s) sur le compte %s.' % (len(to_reconcile), accounts.display_name),
+            'type': 'success',
+            'next': {'type': 'ir.actions.act_window_close'},
+        },
+    }
+        </field>
+    </record>
+
+    <!-- 6.quater Action serveur : Délettrer (annuler le lettrage) -->
+    <record id="action_server_delettrer_lignes" model="ir.actions.server">
+        <field name="name">Délettrer les écritures sélectionnées</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="binding_model_id" ref="account.model_account_move_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    to_unreconcile = records.filtered(lambda l: l.reconciled or l.matched_debit_ids or l.matched_credit_ids)
+    if not to_unreconcile:
+        raise UserError("Aucune ligne lettrée dans la sélection.")
+    to_unreconcile.remove_move_reconcile()
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Délettrage effectué',
+            'message': '%d ligne(s) délettrée(s).' % len(to_unreconcile),
+            'type': 'warning',
+        },
+    }
+        </field>
+    </record>
+</odoo>
