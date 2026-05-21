@@ -56,8 +56,6 @@ Section 3.1.1 du CDC : Plan Comptable
         'security/ir.model.access.csv',
         'security/compta_security.xml',
         'views/account_analytic_views.xml',
-        'views/compta_overrides.xml',
-        'views/account_recurring_views.xml',
         'views/menus.xml',
     ],
 

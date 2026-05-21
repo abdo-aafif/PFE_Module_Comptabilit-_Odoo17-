@@ -36,49 +36,6 @@
               action="account.action_move_in_invoice_type"
               sequence="1"/>
 
-      <!-- 3. Menu Comptabilité (Saisie) — section 3.1.2 du CDC -->
-    <menuitem id="menu_compta_accounting"
-              name="Comptabilité"
-              parent="menu_comptabilite_maroc_root"
-              sequence="4"/>
-
-    <menuitem id="menu_compta_journal_entries"
-              name="Pièces comptables (Saisie Manuelle)"
-              parent="menu_compta_accounting"
-              action="action_compta_saisie_manuelle"
-              sequence="1"/>
-
-    <menuitem id="menu_compta_journal_items"
-              name="Lignes d'écritures (Grand Livre de base)"
-              parent="menu_compta_accounting"
-              action="account.action_account_moves_all"
-              sequence="2"/>
-
-    <!-- AJOUT : ÉCRITURES RÉCURRENTES (Personnalisé car absent de Community) -->
-    <menuitem id="menu_compta_recurring"
-              name="Écritures Récurrentes (Abonnements)"
-              parent="menu_compta_accounting"
-              action="action_account_recurring"
-              sequence="3"/>
-
-    <!-- AJOUT : LETTRAGE -->
-    <menuitem id="menu_compta_lettrage"
-              name="Lettrage des Comptes"
-              parent="menu_compta_accounting"
-              sequence="4"/>
-
-    <menuitem id="menu_compta_lettrage_a_faire"
-              name="Écritures à Lettrer"
-              parent="menu_compta_lettrage"
-              action="action_compta_lettrage_comptes"
-              sequence="1"/>
-
-    <menuitem id="menu_compta_lettrage_historique"
-              name="Historique du Lettrage"
-              parent="menu_compta_lettrage"
-              action="action_compta_lettrage_historique"
-              sequence="2"/>
-
     <!-- 5. Rapports (Reporting Analytique uniquement en P1) -->
     <menuitem id="menu_compta_reporting"
               name="Rapports Comptables"
