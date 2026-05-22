@@ -32,3 +32,4 @@ Ou tous les tests post-installation du module ::
 # F401 est désactivée globalement pour tous les ``__init__.py`` du
 # module via le fichier ``.flake8`` à la racine.
 from . import test_plan_comptable
+from . import test_ecritures_comptables
