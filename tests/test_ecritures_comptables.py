@@ -164,7 +164,7 @@ class TestInvoiceAutoEntries(_ComptaTestCommon):
         })
         invoice.action_post()
         receivable = invoice.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda line: line.account_id.account_type == 'asset_receivable'
         )
         self.assertEqual(len(receivable), 1)
         self.assertAlmostEqual(receivable.debit, 1000.0)
@@ -187,7 +187,7 @@ class TestInvoiceAutoEntries(_ComptaTestCommon):
         })
         bill.action_post()
         payable = bill.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'liability_payable'
+            lambda line: line.account_id.account_type == 'liability_payable'
         )
         self.assertEqual(len(payable), 1)
         self.assertAlmostEqual(payable.credit, 800.0)
@@ -239,10 +239,10 @@ class TestReconciliation(_ComptaTestCommon):
         """Deux lignes équilibrées sur le même compte ⇒ lettrage complet."""
         inv, pay = self._make_pair(amount=1000.0)
         lines = (inv.line_ids + pay.line_ids).filtered(
-            lambda l: l.account_id == self.receivable
+            lambda line: line.account_id == self.receivable
         )
         lines.reconcile()
-        self.assertTrue(all(l.reconciled for l in lines))
+        self.assertTrue(all(line.reconciled for line in lines))
         self.assertTrue(lines[0].full_reconcile_id)
         self.assertEqual(lines.mapped('full_reconcile_id'), lines[0].full_reconcile_id)
 
@@ -250,7 +250,7 @@ class TestReconciliation(_ComptaTestCommon):
         """Après lettrage : solde restant = 0 sur chaque ligne."""
         inv, pay = self._make_pair(amount=750.0)
         lines = (inv.line_ids + pay.line_ids).filtered(
-            lambda l: l.account_id == self.receivable
+            lambda line: line.account_id == self.receivable
         )
         lines.reconcile()
         for line in lines:
@@ -260,14 +260,14 @@ class TestReconciliation(_ComptaTestCommon):
         """Délettrage : les lignes redeviennent non lettrées et le solde réapparaît."""
         inv, pay = self._make_pair(amount=500.0)
         lines = (inv.line_ids + pay.line_ids).filtered(
-            lambda l: l.account_id == self.receivable
+            lambda line: line.account_id == self.receivable
         )
         lines.reconcile()
-        self.assertTrue(all(l.reconciled for l in lines))
+        self.assertTrue(all(line.reconciled for line in lines))
 
         lines.remove_move_reconcile()
-        self.assertFalse(any(l.reconciled for l in lines))
-        self.assertFalse(any(l.full_reconcile_id for l in lines))
+        self.assertFalse(any(line.reconciled for line in lines))
+        self.assertFalse(any(line.full_reconcile_id for line in lines))
 
 
 # =============================================================================
@@ -337,9 +337,9 @@ class TestReversal(_ComptaTestCommon):
         )
         self.assertEqual(reversed_moves.state, 'posted')
         receivable_lines = (move.line_ids + reversed_moves.line_ids).filtered(
-            lambda l: l.account_id == receivable
+            lambda line: line.account_id == receivable
         )
-        self.assertTrue(all(l.reconciled for l in receivable_lines))
+        self.assertTrue(all(line.reconciled for line in receivable_lines))
 
 
 # =============================================================================
