@@ -27,3 +27,4 @@ coexistent (cf. ``account_analytic_line.py``).
 # désactivée globalement pour tous les ``__init__.py`` du module via
 # le fichier ``.flake8`` à la racine.
 from . import account_analytic_line
+from . import account_recurring
