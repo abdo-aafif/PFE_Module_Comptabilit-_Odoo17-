@@ -42,11 +42,28 @@ class TestJournauxComptables(TransactionCase):
     def setUpClass(cls):
         """Initialisation partagée par tous les tests de la classe.
 
-        Récupère la société courante et les journaux existants pour
-        éviter de recalculer ces données à chaque test.
+        Récupère la société courante et s'assure que le journal AN existe.
+        Si le post_init_hook n'a pas pu le créer (ex. base de données
+        fraîche sans plan comptable appliqué), on le crée ici pour que
+        les tests puissent valider la logique métier.
         """
         super().setUpClass()
         cls.company = cls.env.company
+
+        # Assure que le journal AN existe (idempotent)
+        existing = cls.env['account.journal'].search([
+            ('code', '=', 'AN'),
+            ('company_id', '=', cls.company.id),
+        ], limit=1)
+        if not existing:
+            cls.env['account.journal'].create({
+                'name': "Journal des à-nouveaux",
+                'code': 'AN',
+                'type': 'general',
+                'show_on_dashboard': True,
+                'company_id': cls.company.id,
+            })
+
 
     # ── 3.1.3.a — Journal des ventes (natif Odoo) ─────────────────────────
     def test_journal_ventes_exists(self):

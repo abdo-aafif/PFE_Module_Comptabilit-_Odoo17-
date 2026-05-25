@@ -15,6 +15,10 @@ Dans un environnement multi-sociétés, les autres sociétés n'auraient pas le
 journal AN — ce hook corrige ce comportement.
 """
 
+import logging
+
+_logger = logging.getLogger(__name__)
+
 
 def post_init_hook(env):
     """Crée le Journal des à-nouveaux (AN) pour chaque société qui n'en a pas.
@@ -25,7 +29,9 @@ def post_init_hook(env):
     Args:
         env (odoo.api.Environment): environnement Odoo avec les droits SUPERUSER.
     """
+    _logger.info("post_init_hook: création du journal des à-nouveaux (AN)…")
     companies = env['res.company'].search([])
+    _logger.info("post_init_hook: %d société(s) trouvée(s)", len(companies))
 
     for company in companies:
         # Vérifie si un journal avec le code 'AN' existe déjà pour cette société
@@ -35,10 +41,27 @@ def post_init_hook(env):
         ], limit=1)
 
         if not existing:
-            env['account.journal'].create({
-                'name': "Journal des à-nouveaux",
-                'code': 'AN',
-                'type': 'general',
-                'show_on_dashboard': True,
-                'company_id': company.id,
-            })
+            try:
+                env['account.journal'].with_company(company).create({
+                    'name': "Journal des à-nouveaux",
+                    'code': 'AN',
+                    'type': 'general',
+                    'show_on_dashboard': True,
+                    'company_id': company.id,
+                })
+                _logger.info(
+                    "post_init_hook: journal AN créé pour la société %s (id=%d)",
+                    company.name, company.id,
+                )
+            except Exception:
+                _logger.warning(
+                    "post_init_hook: impossible de créer le journal AN pour "
+                    "la société %s (id=%d) — il sera créé ultérieurement.",
+                    company.name, company.id,
+                    exc_info=True,
+                )
+        else:
+            _logger.info(
+                "post_init_hook: journal AN existe déjà pour la société %s (id=%d)",
+                company.name, company.id,
+            )
