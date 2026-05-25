@@ -76,6 +76,7 @@ Section 3.1.3 du CDC : Journaux Comptables
     #   6. Arborescence de menus (référence les actions ⇒ chargée en dernier).
     'data': [
         'security/ir.model.access.csv',
+        'data/journal_data.xml',
         'security/compta_security.xml',
         'views/account_analytic_views.xml',
         'views/compta_overrides.xml',
