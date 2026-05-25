@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Ajout du journal des A-Nouveaux (Opening) spécifique au Maroc -->
+        <!-- Odoo standard crée Achats, Ventes, Banque, Caisse, et "Miscellaneous" (OD).
+             Il manque souvent le journal des à-nouveaux explicite -->
+
+        <record id="journal_a_nouveau" model="account.journal">
+            <field name="name">Journal des à-nouveaux</field>
+            <field name="code">AN</field>
+            <field name="type">general</field>
+            <field name="show_on_dashboard">True</field>
+        </record>
+    </data>
+</odoo>
