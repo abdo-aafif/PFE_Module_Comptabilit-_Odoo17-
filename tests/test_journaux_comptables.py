@@ -64,7 +64,6 @@ class TestJournauxComptables(TransactionCase):
                 'company_id': cls.company.id,
             })
 
-
     # ── 3.1.3.a — Journal des ventes (natif Odoo) ─────────────────────────
     def test_journal_ventes_exists(self):
         """Vérifie la présence d'un journal de type 'sale' (ventes).
