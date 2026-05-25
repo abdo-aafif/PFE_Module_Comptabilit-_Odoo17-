@@ -43,7 +43,7 @@ Section 3.1.3 du CDC : Journaux Comptables
   • Journal de banque (natif Odoo via l10n_ma)
   • Journal de caisse (natif Odoo via l10n_ma)
   • Journal des opérations diverses — OD (natif Odoo via l10n_ma)
-  • Journal des à-nouveaux (création explicite via data/journal_data.xml)
+  • Journal des à-nouveaux (création via post_init_hook pour TOUTES les sociétés)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -70,8 +70,9 @@ Section 3.1.3 du CDC : Journaux Comptables
     #         a. Overrides (saisie manuelle + lettrage)
     #         b. Vues et action des écritures récurrentes
     #   5. Données des journaux comptables (3.1.3) :
-    #         - Création du Journal des à-nouveaux (AN)
     #         - Journaux Ventes/Achats/Banque/Caisse/OD fournis nativement par l10n_ma
+    #         - Journal des à-nouveaux (AN) : créé via post_init_hook pour TOUTES
+    #           les sociétés (pas par XML, pour éviter le problème multi-sociétés)
     #   6. Arborescence de menus (référence les actions ⇒ chargée en dernier).
     'data': [
         'security/ir.model.access.csv',
@@ -79,10 +80,12 @@ Section 3.1.3 du CDC : Journaux Comptables
         'views/account_analytic_views.xml',
         'views/compta_overrides.xml',
         'views/account_recurring_views.xml',
-        # 3.1.3 Journaux Comptables
-        'data/journal_data.xml',
         'views/menus.xml',
     ],
+
+    # Hook exécuté après installation/mise à jour :
+    # crée le Journal des à-nouveaux (AN) dans TOUTES les sociétés existantes.
+    'post_init_hook': 'post_init_hook',
 
     # Module installable depuis le menu Apps.
     'installable': True,
