@@ -153,4 +153,59 @@ if records:
     }
         </field>
     </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.1.4 — GESTION BANCAIRE
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- 3.1.4.a Réactiver la création manuelle (bouton Nouveau) pour les relevés bancaires -->
+    <record id="view_bank_statement_tree_create_fix" model="ir.ui.view">
+        <field name="name">account.bank.statement.tree.create.fix</field>
+        <field name="model">account.bank.statement</field>
+        <field name="inherit_id" ref="account.view_bank_statement_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="attributes">
+                <!-- Enlève la restriction create="false" imposée par Odoo Community -->
+                <attribute name="create">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 3.1.4.b Action pour de vraies Opérations Bancaires Manuelles (Bypass Odoo 17) -->
+    <record id="action_compta_operations_bancaires_manuelles" model="ir.actions.act_window">
+        <field name="name">Opérations Bancaires &amp; Caisse</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('journal_id.type', 'in', ('bank', 'cash')), ('move_type', '=', 'entry')]</field>
+        <field name="context">{'default_move_type': 'entry'}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Enregistrez une nouvelle opération bancaire ou de caisse
+          </p>
+        </field>
+    </record>
+
+    <!-- 3.1.4.c Action pour le Suivi des Comptes (Reporting Trésorerie) -->
+    <record id="action_compta_suivi_comptes_bancaires" model="ir.actions.act_window">
+        <field name="name">Suivi des Comptes Bancaires</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="domain">[('account_id.account_type', '=', 'asset_cash'), ('parent_state', '=', 'posted')]</field>
+        <field name="context">{'search_default_groupby_account_id': 1}</field>
+    </record>
+
+    <!-- 3.1.4.d Action Transactions Bancaires (lignes de relevé à rapprocher) -->
+    <record id="action_compta_transactions_bancaires" model="ir.actions.act_window">
+        <field name="name">Transactions Bancaires (à rapprocher)</field>
+        <field name="res_model">account.bank.statement.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_reconciled', '=', False)]</field>
+        <field name="context">{'search_default_groupby_journal_id': 1, 'create': False}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Aucune transaction bancaire en attente de rapprochement.
+          </p>
+          <p>Importez un relevé bancaire via "Importer un Relevé (CSV / OFX / MT940)".</p>
+        </field>
+    </record>
 </odoo>

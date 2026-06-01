@@ -28,4 +28,5 @@ strictement nécessaires sont écrites en Python.
 # Note : ``wizard`` n'est pas importé tant qu'il ne contient aucun assistant
 # (cf. wizard/__init__.py). Idem pour ``controllers`` qui n'existe pas encore.
 from . import models
+from . import wizard
 from .hooks import post_init_hook

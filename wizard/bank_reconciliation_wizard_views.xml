@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================== -->
+    <!-- VUE FORMULAIRE DU WIZARD DE RAPPROCHEMENT BANCAIRE                  -->
+    <!-- ================================================================== -->
+    <record id="view_bank_reconciliation_wizard_form" model="ir.ui.view">
+        <field name="name">bank.reconciliation.wizard.form</field>
+        <field name="model">bank.reconciliation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rapprochement Bancaire">
+
+                <!-- Champs invisibles -->
+                <field name="statement_line_id" invisible="1"/>
+                <field name="is_reconciled" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+
+                <!-- Container principal avec largeur forcée -->
+                <div style="width: 100%; min-width: 700px; padding: 4px;">
+
+                    <!-- Bandeau alerte si déjà rapproché -->
+                    <div class="alert alert-warning" role="alert"
+                         style="margin: 8px 0;"
+                         invisible="not is_reconciled">
+                        <i class="fa fa-check-circle me-2"/>
+                        Cette transaction est déjà rapprochée.
+                    </div>
+
+                    <!-- ── Récapitulatif de la transaction ── -->
+                    <div class="alert alert-info" role="alert"
+                         style="margin: 8px 0; padding: 12px 16px;">
+                        <h5 style="margin-bottom: 10px;">
+                            <i class="fa fa-bank me-2"/> Transaction bancaire
+                        </h5>
+                        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+                            <div style="flex: 1 1 200px;">
+                                <span class="text-muted">Date :</span>
+                                <strong class="ms-1">
+                                    <field name="date" readonly="1" nolabel="1"/>
+                                </strong>
+                            </div>
+                            <div style="flex: 1 1 200px;">
+                                <span class="text-muted">Montant :</span>
+                                <strong class="ms-1">
+                                    <field name="amount" readonly="1" nolabel="1"/>
+                                </strong>
+                            </div>
+                            <div style="flex: 1 1 200px;">
+                                <span class="text-muted">Journal :</span>
+                                <strong class="ms-1">
+                                    <field name="journal_id" readonly="1" nolabel="1"/>
+                                </strong>
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <span class="text-muted">Référence :</span>
+                            <strong class="ms-1">
+                                <field name="payment_ref" readonly="1" nolabel="1"/>
+                            </strong>
+                        </div>
+                    </div>
+
+                    <!-- ── Choix du mode (selection_badge = badges horizontaux) ── -->
+                    <div style="padding: 12px 8px 4px 8px;">
+                        <div style="display: block; font-weight: 600; text-transform: uppercase; color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; margin-bottom: 12px; font-size: 13px;">
+                            Mode de rapprochement
+                        </div>
+                        <div style="padding: 4px 0;">
+                            <field name="mode" widget="selection_badge" nolabel="1"/>
+                        </div>
+                    </div>
+
+                    <!-- ── Mode : Imputation directe ── -->
+                    <div style="padding: 12px 8px 4px 8px;"
+                         invisible="mode != 'write_off'">
+                        <div style="display: block; font-weight: 600; text-transform: uppercase; color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; margin-bottom: 12px; font-size: 13px;">
+                            Contrepartie comptable
+                        </div>
+                        <group>
+                            <field name="account_id"
+                                   required="mode == 'write_off'"
+                                   options="{'no_create': True}"/>
+                            <field name="label" placeholder="Ex: Frais bancaires avril 2026"/>
+                        </group>
+                        <div style="padding: 6px 4px; font-size: 12px; color: #6c757d; white-space: normal;">
+                            <i class="fa fa-info-circle me-1"/> Exemples de comptes :
+                            <b>6311</b> (frais bancaires),
+                            <b>7386</b> (intérêts créditeurs),
+                            <b>3421</b> (clients),
+                            <b>4411</b> (fournisseurs)
+                        </div>
+                    </div>
+
+                    <!-- ── Mode : Association écriture ── -->
+                    <div style="padding: 12px 8px 4px 8px;"
+                         invisible="mode != 'match'">
+                        <div style="display: block; font-weight: 600; text-transform: uppercase; color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; margin-bottom: 12px; font-size: 13px;">
+                            Écriture à associer
+                        </div>
+                        <group>
+                            <field name="move_line_id"
+                                   required="mode == 'match'"
+                                   options="{'no_create': True}"
+                                   context="{'search_default_unreconciled': 1}"/>
+                        </group>
+                        <div style="padding: 6px 4px; font-size: 12px; color: #6c757d; white-space: normal;">
+                            <i class="fa fa-info-circle me-1"/>
+                            Sélectionnez la ligne de facture ou paiement correspondante.
+                            Le compte doit avoir l'option "Réconciliation" activée (3421, 4411…).
+                        </div>
+                    </div>
+
+                    <!-- ── Tableau des candidats (mode match) ── -->
+                    <div style="padding: 12px 8px;"
+                         invisible="mode != 'match'">
+                        <div style="display: block; font-weight: 600; text-transform: uppercase; color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 6px; margin-bottom: 12px; font-size: 13px;">
+                            Écritures non rapprochées disponibles
+                        </div>
+                        <div style="width: 100%; overflow-x: auto;">
+                            <field name="candidate_ids" nolabel="1"
+                                   widget="many2many" readonly="1">
+                                <tree string="Candidats" create="false" delete="false"
+                                      editable="false" decoration-success="balance > 0"
+                                      decoration-danger="balance &lt; 0">
+                                    <field name="date"/>
+                                    <field name="move_id" string="Pièce"/>
+                                    <field name="account_id" string="Compte"/>
+                                    <field name="name" string="Libellé"/>
+                                    <field name="debit" string="Débit"/>
+                                    <field name="credit" string="Crédit"/>
+                                    <field name="balance" string="Solde"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </div>
+                    </div>
+
+                </div>
+
+                <footer>
+                    <button name="action_reconcile"
+                            type="object"
+                            string="Rapprocher"
+                            class="btn-primary"
+                            invisible="is_reconciled"/>
+                    <button special="cancel" string="Annuler" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- ACTION ACT_WINDOW                                                    -->
+    <!-- ================================================================== -->
+    <record id="action_bank_reconciliation_wizard" model="ir.actions.act_window">
+        <field name="name">Rapprocher une Transaction</field>
+        <field name="res_model">bank.reconciliation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'dialog_size': 'large'}</field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- ACTION SERVEUR : bouton "Rapprocher" dans la liste des transactions  -->
+    <!-- ================================================================== -->
+    <record id="action_server_reconcile_bank_line" model="ir.actions.server">
+        <field name="name">Rapprocher</field>
+        <field name="model_id" ref="account.model_account_bank_statement_line"/>
+        <field name="binding_model_id" ref="account.model_account_bank_statement_line"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    line = records[0]
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Rapprochement Bancaire',
+        'res_model': 'bank.reconciliation.wizard',
+        'view_mode': 'form',
+        'target': 'new',
+        'context': {
+            'default_statement_line_id': line.id,
+            'dialog_size': 'large',
+        },
+    }
+        </field>
+    </record>
+
+</odoo>
