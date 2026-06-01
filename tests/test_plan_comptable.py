@@ -20,10 +20,11 @@ Tous les tests sont marqués :
     * ``omega_p1``      : tag personnalisé pour lancer ces tests seuls via
                           ``odoo-bin -i pfe --test-tags=omega_p1``
 """
+
 from odoo.tests.common import TransactionCase, tagged
 
 
-@tagged('post_install', '-at_install', 'omega_p1')
+@tagged("post_install", "-at_install", "omega_p1")
 class TestPlanComptable(TransactionCase):
     """Tests fonctionnels de la fonctionnalité 3.1.1 — Plan Comptable.
 
@@ -59,10 +60,9 @@ class TestPlanComptable(TransactionCase):
         créée sans cette dépendance ou qu'un dépendance circulaire bloque
         son chargement.
         """
-        l10n_ma = self.env['ir.module.module'].search([('name', '=', 'l10n_ma')], limit=1)
+        l10n_ma = self.env["ir.module.module"].search([("name", "=", "l10n_ma")], limit=1)
         self.assertTrue(l10n_ma, "Le module l10n_ma doit exister.")
-        self.assertEqual(l10n_ma.state, 'installed',
-                         "Le module l10n_ma doit être installé (dépendance du module).")
+        self.assertEqual(l10n_ma.state, "installed", "Le module l10n_ma doit être installé (dépendance du module).")
 
     def test_pcge_accounts_present(self):
         """Vérifie la présence des comptes PCGE (classes 1 à 7).
@@ -80,16 +80,19 @@ class TestPlanComptable(TransactionCase):
         société courante, validant ainsi le chargement du chart of accounts.
         """
         # Au moins quelques préfixes structurants doivent exister.
-        prefixes_to_check = ['1', '2', '3', '4', '5', '6', '7']
+        prefixes_to_check = ["1", "2", "3", "4", "5", "6", "7"]
         for prefix in prefixes_to_check:
-            count = self.env['account.account'].search_count([
-                ('company_id', '=', self.company.id),
-                ('code', '=like', f'{prefix}%'),
-            ])
+            count = self.env["account.account"].search_count(
+                [
+                    ("company_id", "=", self.company.id),
+                    ("code", "=like", f"{prefix}%"),
+                ]
+            )
             self.assertGreater(
-                count, 0,
+                count,
+                0,
                 f"Au moins un compte de la classe {prefix} doit exister "
-                f"dans le PCGE pour la société {self.company.name}."
+                f"dans le PCGE pour la société {self.company.name}.",
             )
 
     def test_pcge_classes_specifiques_maroc(self):
@@ -106,15 +109,15 @@ class TestPlanComptable(TransactionCase):
         """
         # PCGE Maroc : 342 Clients (classe 3), 441 Fournisseurs (classe 4)
         # (≠ PCG français où Clients=411, Fournisseurs=401)
-        for code_prefix in ['342', '441']:
-            account = self.env['account.account'].search([
-                ('company_id', '=', self.company.id),
-                ('code', '=like', f'{code_prefix}%'),
-            ], limit=1)
-            self.assertTrue(
-                account,
-                f"Un compte commençant par {code_prefix} (PCGE Maroc) doit exister."
+        for code_prefix in ["342", "441"]:
+            account = self.env["account.account"].search(
+                [
+                    ("company_id", "=", self.company.id),
+                    ("code", "=like", f"{code_prefix}%"),
+                ],
+                limit=1,
             )
+            self.assertTrue(account, f"Un compte commençant par {code_prefix} (PCGE Maroc) doit exister.")
 
     # ── 3.1.1.b — Comptabilité analytique ──────────────────────────────────
     def test_analytic_module_installed(self):
@@ -123,8 +126,8 @@ class TestPlanComptable(TransactionCase):
         Dépendance nécessaire à la prise en charge des plans, comptes et
         lignes analytiques utilisés dans le Suivi Analytique unifié.
         """
-        analytic = self.env['ir.module.module'].search([('name', '=', 'analytic')], limit=1)
-        self.assertEqual(analytic.state, 'installed')
+        analytic = self.env["ir.module.module"].search([("name", "=", "analytic")], limit=1)
+        self.assertEqual(analytic.state, "installed")
 
     def test_analytic_group_implied_in_account_user(self):
         """Vérifie l'implication du groupe analytique dans le groupe Comptable.
@@ -138,13 +141,13 @@ class TestPlanComptable(TransactionCase):
 
             <field name="implied_ids" eval="[(4, ref('analytic.group_analytic_accounting'))]"/>
         """
-        account_user = self.env.ref('account.group_account_user')
-        analytic_group = self.env.ref('analytic.group_analytic_accounting')
+        account_user = self.env.ref("account.group_account_user")
+        analytic_group = self.env.ref("analytic.group_analytic_accounting")
         self.assertIn(
             analytic_group,
             account_user.implied_ids,
             "Le groupe analytique doit être hérité par le groupe Comptable. "
-            "Configuré dans security/compta_security.xml."
+            "Configuré dans security/compta_security.xml.",
         )
 
     def test_create_analytic_plan_and_account(self):
@@ -160,16 +163,20 @@ class TestPlanComptable(TransactionCase):
         ``account.analytic.account`` autorisent la création par l'utilisateur
         de test.
         """
-        plan = self.env['account.analytic.plan'].create({
-            'name': 'Test Axe Projet',
-        })
-        account = self.env['account.analytic.account'].create({
-            'name': 'Test Projet PFE',
-            'plan_id': plan.id,
-            'company_id': self.company.id,
-        })
+        plan = self.env["account.analytic.plan"].create(
+            {
+                "name": "Test Axe Projet",
+            }
+        )
+        account = self.env["account.analytic.account"].create(
+            {
+                "name": "Test Projet PFE",
+                "plan_id": plan.id,
+                "company_id": self.company.id,
+            }
+        )
         self.assertEqual(account.plan_id, plan)
-        self.assertEqual(account.name, 'Test Projet PFE')
+        self.assertEqual(account.name, "Test Projet PFE")
 
     def test_analytic_distribution_model_exists(self):
         """Vérifie l'existence de l'action « Règles de Distribution Analytique ».
@@ -179,11 +186,11 @@ class TestPlanComptable(TransactionCase):
         type : « compte général ``61*`` ⇒ 100 % Projet A ».
         """
         action = self.env.ref(
-            'pfe.action_compta_analytic_distribution_model',
+            "pfe.action_compta_analytic_distribution_model",
             raise_if_not_found=False,
         )
         self.assertTrue(action, "L'action 'Règles de Distribution Analytique' doit exister.")
-        self.assertEqual(action.res_model, 'account.analytic.distribution.model')
+        self.assertEqual(action.res_model, "account.analytic.distribution.model")
 
     def test_analytic_lines_action_exists(self):
         """Vérifie que l'action de reporting analytique est exposée.
@@ -192,11 +199,11 @@ class TestPlanComptable(TransactionCase):
         rapport « Suivi Analytique » avec ses vues pivot/tree/graph.
         """
         action = self.env.ref(
-            'pfe.action_compta_analytic_lines',
+            "pfe.action_compta_analytic_lines",
             raise_if_not_found=False,
         )
         self.assertTrue(action, "L'action 'Suivi Analytique' doit exister.")
-        self.assertEqual(action.res_model, 'account.analytic.line')
+        self.assertEqual(action.res_model, "account.analytic.line")
 
     # ── 3.1.1.c — Multi-société ────────────────────────────────────────────
     def test_create_second_company_with_isolated_chart(self):
@@ -214,28 +221,32 @@ class TestPlanComptable(TransactionCase):
             3. Applique ce template sur la nouvelle société.
             4. Vérifie qu'elle dispose bien d'un plan comptable rempli.
         """
-        company2 = self.env['res.company'].create({
-            'name': 'Société Test 2',
-            'currency_id': self.env.ref('base.MAD').id,
-        })
+        company2 = self.env["res.company"].create(
+            {
+                "name": "Société Test 2",
+                "currency_id": self.env.ref("base.MAD").id,
+            }
+        )
         # Installer le PCGE marocain sur la nouvelle société : on récupère
         # le template via ``ir.model.data`` car son XML ID exact peut varier
         # selon les versions de ``l10n_ma``.
-        template_xml_id = self.env['ir.model.data'].search([
-            ('module', '=', 'l10n_ma'),
-            ('model', '=', 'account.chart.template'),
-        ], limit=1)
+        template_xml_id = self.env["ir.model.data"].search(
+            [
+                ("module", "=", "l10n_ma"),
+                ("model", "=", "account.chart.template"),
+            ],
+            limit=1,
+        )
         if template_xml_id:
             template = self.env[template_xml_id.model].browse(template_xml_id.res_id)
             template.try_loading(company=company2, install_demo=False)
             # Vérifier l'isolation : la 2ᵉ société doit avoir ses propres comptes.
-            accounts_c2 = self.env['account.account'].search([
-                ('company_id', '=', company2.id),
-            ])
-            self.assertGreater(
-                len(accounts_c2), 10,
-                "La 2e société doit avoir son propre plan comptable isolé."
+            accounts_c2 = self.env["account.account"].search(
+                [
+                    ("company_id", "=", company2.id),
+                ]
             )
+            self.assertGreater(len(accounts_c2), 10, "La 2e société doit avoir son propre plan comptable isolé.")
 
     def test_account_account_has_company_id_field(self):
         """Vérifie que ``account.account`` porte bien le champ ``company_id``.
@@ -245,9 +256,9 @@ class TestPlanComptable(TransactionCase):
         automatiquement par Odoo en mode multi-company).
         """
         self.assertIn(
-            'company_id',
-            self.env['account.account']._fields,
-            "Le multi-société nécessite que account.account ait un company_id."
+            "company_id",
+            self.env["account.account"]._fields,
+            "Le multi-société nécessite que account.account ait un company_id.",
         )
 
     # ── 3.1.1.d — Sécurité / Bridges de groupes ───────────────────────────
@@ -261,9 +272,9 @@ class TestPlanComptable(TransactionCase):
         complètes** (Débit / Crédit, journaux, …) bridées par défaut
         en édition Community.
         """
-        group_invoice = self.env.ref('account.group_account_invoice')
-        group_user = self.env.ref('account.group_account_user')
-        group_readonly = self.env.ref('account.group_account_readonly')
+        group_invoice = self.env.ref("account.group_account_invoice")
+        group_user = self.env.ref("account.group_account_user")
+        group_readonly = self.env.ref("account.group_account_readonly")
         self.assertIn(group_user, group_invoice.implied_ids)
         self.assertIn(group_readonly, group_invoice.implied_ids)
 
@@ -275,9 +286,9 @@ class TestPlanComptable(TransactionCase):
         sinon une grande partie de l'UI standard d'Odoo Community reste
         masquée.
         """
-        group_manager = self.env.ref('account.group_account_manager')
-        group_user = self.env.ref('account.group_account_user')
-        group_readonly = self.env.ref('account.group_account_readonly')
+        group_manager = self.env.ref("account.group_account_manager")
+        group_user = self.env.ref("account.group_account_user")
+        group_readonly = self.env.ref("account.group_account_readonly")
         self.assertIn(group_user, group_manager.implied_ids)
         self.assertIn(group_readonly, group_manager.implied_ids)
 
@@ -290,21 +301,21 @@ class TestPlanComptable(TransactionCase):
         des autres rôles (RH, vente, stock, …).
         """
         menu = self.env.ref(
-            'pfe.menu_comptabilite_maroc_root',
+            "pfe.menu_comptabilite_maroc_root",
             raise_if_not_found=False,
         )
         self.assertTrue(menu, "Le menu racine 'Comptabilité' doit exister.")
-        group_user = self.env.ref('account.group_account_user')
-        group_manager = self.env.ref('account.group_account_manager')
+        group_user = self.env.ref("account.group_account_user")
+        group_manager = self.env.ref("account.group_account_manager")
         self.assertTrue(
             group_user in menu.groups_id or group_manager in menu.groups_id,
-            "Le menu racine doit être restreint aux groupes comptables."
+            "Le menu racine doit être restreint aux groupes comptables.",
         )
 
     def test_plan_comptable_menu_exists(self):
         """Vérifie la présence du menu « Plan Comptable » sous Configuration."""
         menu = self.env.ref(
-            'pfe.menu_compta_coa',
+            "pfe.menu_compta_coa",
             raise_if_not_found=False,
         )
         self.assertTrue(menu, "Le menu 'Plan Comptable' doit exister.")
@@ -312,7 +323,7 @@ class TestPlanComptable(TransactionCase):
     def test_journals_menu_exists(self):
         """Vérifie la présence du menu « Journaux Comptables »."""
         menu = self.env.ref(
-            'pfe.menu_compta_journals',
+            "pfe.menu_compta_journals",
             raise_if_not_found=False,
         )
         self.assertTrue(menu)
@@ -331,13 +342,13 @@ class TestPlanComptable(TransactionCase):
         ``views/menus.xml``.
         """
         for xml_id in [
-            'menu_compta_analytique',
-            'menu_compta_analytique_comptes',
-            'menu_compta_analytique_plans',
-            'menu_compta_analytique_distribution',
+            "menu_compta_analytique",
+            "menu_compta_analytique_comptes",
+            "menu_compta_analytique_plans",
+            "menu_compta_analytique_distribution",
         ]:
             menu = self.env.ref(
-                f'pfe.{xml_id}',
+                f"pfe.{xml_id}",
                 raise_if_not_found=False,
             )
             self.assertTrue(menu, f"Le menu {xml_id} doit exister.")
