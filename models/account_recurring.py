@@ -12,7 +12,7 @@ class AccountRecurring(models.Model):
         'res.company', string='Société',
         default=lambda self: self.env.company,
     )
-    journal_id = fields.Many2one('account.journal', string="Journal", required=True)
+    journal_id = fields.Many2one('account.journal', required=True)
     move_id = fields.Many2one(
         'account.move', string="Écriture modèle", required=True,
         help="L'écriture comptable existante qui servira de modèle "

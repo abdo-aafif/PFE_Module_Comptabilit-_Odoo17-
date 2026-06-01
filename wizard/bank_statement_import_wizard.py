@@ -58,7 +58,7 @@ class BankStatementImportWizard(models.TransientModel):
 
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Lignes Importées (%d)') % len(created),
+            'name': _('Lignes Importées (%(count)d)') % {'count': len(created)},
             'res_model': 'account.bank.statement.line',
             'view_mode': 'tree,form',
             'domain': [('id', 'in', created.ids)],
@@ -109,14 +109,15 @@ class BankStatementImportWizard(models.TransientModel):
             date = datetime.strptime(date_str, self.csv_date_format or '%d/%m/%Y').date()
         except ValueError:
             raise UserError(
-                _('Ligne %d — Format de date invalide : "%s". Attendu : %s')
-                % (line_no, date_str, self.csv_date_format)
+                _('Ligne %(line)d — Format de date invalide : "%(date)s". Attendu : %(fmt)s')
+                % {'line': line_no, 'date': date_str, 'fmt': self.csv_date_format}
             )
         try:
             amount = float(amount_str)
         except ValueError:
             raise UserError(
-                _('Ligne %d — Montant invalide : "%s"') % (line_no, amount_str)
+                _('Ligne %(line)d — Montant invalide : "%(amount)s"')
+                % {'line': line_no, 'amount': amount_str}
             )
 
         return {
@@ -194,7 +195,7 @@ class BankStatementImportWizard(models.TransientModel):
                 xml_start = raw.find('<OFX')
             root = ET.fromstring(raw[xml_start:])
         except ET.ParseError as e:
-            raise UserError(_('Fichier OFX XML invalide : %s') % str(e))
+            raise UserError(_('Fichier OFX XML invalide : %(error)s') % {'error': str(e)})
 
         # namespace not used — OFX 2.x uses bare element names
         transactions = []

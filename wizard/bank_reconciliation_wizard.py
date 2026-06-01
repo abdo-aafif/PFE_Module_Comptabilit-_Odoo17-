@@ -28,7 +28,7 @@ class BankReconciliationWizard(models.TransientModel):
     mode = fields.Selection([
         ('write_off', 'Imputation directe'),
         ('match', 'Associer à une écriture existante'),
-    ], string='Mode', default='write_off', required=True)
+    ], default='write_off', required=True)
 
     # ── Mode imputation directe ───────────────────────────────────────────────
     account_id = fields.Many2one(
@@ -143,10 +143,10 @@ class BankReconciliationWizard(models.TransientModel):
         target_line = self.move_line_id
         if not target_line.account_id.reconcile:
             raise UserError(_(
-                'Le compte "%s" n\'est pas réconciliable. '
+                'Le compte "%(account)s" n\'est pas réconciliable. '
                 'Activez l\'option "Autoriser la réconciliation" sur ce compte '
                 'dans Configuration > Plan Comptable.'
-            ) % target_line.account_id.display_name)
+            ) % {'account': target_line.account_id.display_name})
 
         # En Odoo 17 le mouvement importé est déjà validé — remettre en brouillon
         if move.state == 'posted':
@@ -192,9 +192,9 @@ class BankReconciliationWizard(models.TransientModel):
         if not suspense_lines:
             raise UserError(_(
                 "Impossible de trouver la ligne de contrepartie (compte suspens) "
-                "dans le mouvement %s. "
+                "dans le mouvement %(move)s. "
                 "Vérifiez que le journal bancaire a un compte suspens configuré."
-            ) % move.name)
+            ) % {'move': move.name})
 
         return suspense_lines
 

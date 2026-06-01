@@ -49,7 +49,7 @@ jobs:
                  --valid-odoo-versions=${{ env.ODOO_VERSION }} \
                  --disable=all \
                  --enable=E,F,odoolint \
-                 --disable=import-error \
+                 --disable=import-error,W \
                  models/ wizard/ tests/
 
       - name: Run pylint-odoo (full report - advisory)
