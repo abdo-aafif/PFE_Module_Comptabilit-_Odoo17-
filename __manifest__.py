@@ -17,9 +17,9 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.6.0',
+    'version': '17.0.1.7.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Gestion des Immobilisations (amortissements linéaire/dégressif CGI, cession/rebut)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Immobilisations + Clôture Comptable (verrouillage périodes, à-nouveaux, contrôles pré-clôture)',
     'description': """
 Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
@@ -69,6 +69,12 @@ Section 3.2.2 du CDC : Gestion des Immobilisations
   • Calcul automatique des amortissements : linéaire et dégressif (CGI marocain, prorata temporis)
   • Tableau d'amortissement (vue + impression PDF) avec basculement dégressif→linéaire
   • Cession / mise au rebut avec génération automatique de l'écriture de sortie (plus/moins-value)
+
+Section 3.2.3 du CDC : Clôture Comptable
+  • Processus de clôture mensuelle / annuelle (assistant guidé en 3 étapes)
+  • Contrôles de cohérence pré-clôture (balance équilibrée, aucun brouillon, amortissements, rapprochement)
+  • Verrouillage des périodes (period_lock_date / fiscalyear_lock_date) + déverrouillage Manager
+  • Génération automatique des écritures d'à-nouveaux (report bilan 1-5, résultat 119100/119900)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -120,6 +126,8 @@ Section 3.2.2 du CDC : Gestion des Immobilisations
         'views/account_asset_views.xml',
         'reports/asset_report.xml',
         'wizard/asset_disposal_wizard_views.xml',
+        # 3.2.3 Clôture Comptable (séquences, historique, wizard de clôture)
+        'views/account_period_close_views.xml',
         'views/menus.xml',
     ],
 

@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================== -->
+    <!-- SÉQUENCES                                                            -->
+    <!-- ================================================================== -->
+    <record id="seq_period_close_monthly" model="ir.sequence">
+        <field name="name">Clôture Mensuelle</field>
+        <field name="code">account.period.close.monthly</field>
+        <field name="prefix">CLOTURE-MENS-%(year)s-</field>
+        <field name="padding">2</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="seq_period_close_annual" model="ir.sequence">
+        <field name="name">Clôture Annuelle</field>
+        <field name="code">account.period.close.annual</field>
+        <field name="prefix">CLOTURE-ANN-</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- HISTORIQUE DES CLÔTURES — LISTE                                     -->
+    <!-- ================================================================== -->
+    <record id="view_period_close_tree" model="ir.ui.view">
+        <field name="name">account.period.close.tree</field>
+        <field name="model">account.period.close</field>
+        <field name="arch" type="xml">
+            <tree string="Historique des clôtures"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="close_type"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="date_close"/>
+                <field name="check_balance"     widget="boolean_toggle" readonly="1"/>
+                <field name="check_no_draft"    widget="boolean_toggle" readonly="1"/>
+                <field name="check_depreciation" widget="boolean_toggle" readonly="1"/>
+                <field name="opening_move_id"/>
+                <field name="state"
+                       decoration-success="state == 'done'"
+                       decoration-muted="state == 'cancelled'"
+                       widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- HISTORIQUE DES CLÔTURES — FORMULAIRE                                -->
+    <!-- ================================================================== -->
+    <record id="view_period_close_form" model="ir.ui.view">
+        <field name="name">account.period.close.form</field>
+        <field name="model">account.period.close</field>
+        <field name="arch" type="xml">
+            <form string="Clôture Comptable">
+                <header>
+                    <!-- ── Boutons d'action sur l'écriture à-nouveaux ── -->
+                    <button name="action_post_opening_move" type="object"
+                            string="Comptabiliser à-nouveaux" class="btn-primary"
+                            invisible="state != 'done' or not opening_move_id or opening_move_state == 'posted'"
+                            confirm="Confirmer la comptabilisation de l'écriture à-nouveaux ?"/>
+                    <button name="action_cancel_opening_move" type="object"
+                            string="Annuler à-nouveaux" class="btn-warning"
+                            invisible="state != 'done' or not opening_move_id or opening_move_state == 'posted'"
+                            confirm="Supprimer l'écriture à-nouveaux ? Vous pourrez la régénérer ensuite."/>
+                    <button name="action_regenerate_opening_move" type="object"
+                            string="Régénérer à-nouveaux"
+                            invisible="state != 'done' or close_type != 'annual' or opening_move_id"/>
+                    <!-- ── Bouton Déverrouiller (Manager Comptable) ── -->
+                    <button name="action_unlock" type="object"
+                            string="Déverrouiller" class="btn-danger"
+                            groups="account.group_account_manager"
+                            invisible="state != 'done'"
+                            confirm="Confirmer le déverrouillage ? Cette action lève le verrou de période et nécessite un motif dans Observations."/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <!-- ── Smart buttons ── -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_opening_move" type="object"
+                                class="oe_stat_button" icon="fa-book"
+                                invisible="not opening_move_id">
+                            <div class="o_stat_info">
+                                <field name="opening_move_state" widget="statinfo" nolabel="1"
+                                       string=""/>
+                                <span class="o_stat_text">Écriture à-nouveaux</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Bandeau d'état du move à-nouveaux -->
+                    <div class="alert alert-info" role="alert"
+                         invisible="not opening_move_id or opening_move_state == 'posted' or state != 'done'"
+                         style="margin-bottom:8px;">
+                        <i class="fa fa-info-circle me-1" title="Information"/>
+                        <strong>Écriture à-nouveaux en BROUILLON.</strong>
+                        Vérifiez son contenu via le bouton « Écriture à-nouveaux »
+                        puis cliquez sur <b>Comptabiliser à-nouveaux</b> pour la valider.
+                    </div>
+
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Identification">
+                            <field name="company_id" options="{'no_create': True}"
+                                   groups="base.group_multi_company"/>
+                            <field name="close_type"/>
+                            <field name="date_close"/>
+                        </group>
+                        <group string="Période clôturée">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="period_lock_date"/>
+                            <field name="fiscalyear_lock_date"/>
+                        </group>
+                    </group>
+
+                    <!-- Résultats des contrôles -->
+                    <group string="Résultats des contrôles pré-clôture">
+                        <group>
+                            <field name="check_balance"
+                                   widget="boolean_toggle" readonly="1"
+                                   string="Balance équilibrée (Débit = Crédit)"/>
+                            <field name="check_no_draft"
+                                   widget="boolean_toggle" readonly="1"
+                                   string="Aucune écriture en brouillon"/>
+                        </group>
+                        <group>
+                            <field name="check_depreciation"
+                                   widget="boolean_toggle" readonly="1"
+                                   string="Amortissements comptabilisés"/>
+                            <field name="check_reconciled"
+                                   widget="boolean_toggle" readonly="1"
+                                   string="Transactions bancaires rapprochées"/>
+                        </group>
+                    </group>
+
+                    <group string="Écriture générée" invisible="not opening_move_id">
+                        <field name="opening_move_id" readonly="1"/>
+                        <field name="opening_move_state" readonly="1"/>
+                    </group>
+
+                    <group string="Observations">
+                        <field name="note" nolabel="1"
+                               placeholder="Remarques sur cette clôture, ou motif obligatoire de déverrouillage..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- WIZARD DE CLÔTURE — FORMULAIRE                                      -->
+    <!-- ================================================================== -->
+    <record id="view_period_close_wizard_form" model="ir.ui.view">
+        <field name="name">period.close.wizard.form</field>
+        <field name="model">period.close.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Clôture Comptable">
+                <sheet>
+
+                    <!-- Champs invisibles -->
+                    <field name="checks_done"    invisible="1"/>
+                    <field name="all_checks_ok"  invisible="1"/>
+                    <field name="check_balance"      invisible="1"/>
+                    <field name="check_no_draft"     invisible="1"/>
+                    <field name="check_depreciation" invisible="1"/>
+                    <field name="check_reconciled"   invisible="1"/>
+
+                    <!-- ── Étape 1 : Paramètres ── -->
+                    <group string="1. Paramètres de la clôture">
+                        <group>
+                            <field name="company_id" options="{'no_create': True}"
+                                   groups="base.group_multi_company"/>
+                            <field name="close_type"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+
+                    <!-- ── Étape 2 : Résultats des contrôles ── -->
+                    <div invisible="not checks_done">
+                        <separator string="2. Contrôles pré-clôture"/>
+
+                        <!-- Tableau de synthèse -->
+                        <table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:13px;">
+                            <!-- Ligne 1 : Balance -->
+                            <tr>
+                                <td style="width:32px; text-align:center; padding:6px 4px;">
+                                    <span invisible="check_balance"
+                                          class="fa fa-times-circle text-danger fa-lg"
+                                          title="Échec"/>
+                                    <span invisible="not check_balance"
+                                          class="fa fa-check-circle text-success fa-lg"
+                                          title="Réussi"/>
+                                </td>
+                                <td style="padding:6px 8px; font-weight:bold;">
+                                    Balance (Débit / Crédit)
+                                </td>
+                                <td style="padding:6px 8px;">
+                                    <field name="msg_balance" readonly="1" nolabel="1"/>
+                                </td>
+                            </tr>
+                            <!-- Ligne 2 : Brouillons -->
+                            <tr style="background:#f8f9fa;">
+                                <td style="width:32px; text-align:center; padding:6px 4px;">
+                                    <span invisible="check_no_draft"
+                                          class="fa fa-times-circle text-danger fa-lg"
+                                          title="Échec"/>
+                                    <span invisible="not check_no_draft"
+                                          class="fa fa-check-circle text-success fa-lg"
+                                          title="Réussi"/>
+                                </td>
+                                <td style="padding:6px 8px; font-weight:bold;">
+                                    Écritures en brouillon
+                                </td>
+                                <td style="padding:6px 8px;">
+                                    <field name="msg_no_draft" readonly="1" nolabel="1"/>
+                                </td>
+                            </tr>
+                            <!-- Ligne 3 : Amortissements -->
+                            <tr>
+                                <td style="width:32px; text-align:center; padding:6px 4px;">
+                                    <span invisible="check_depreciation"
+                                          class="fa fa-times-circle text-danger fa-lg"
+                                          title="Échec"/>
+                                    <span invisible="not check_depreciation"
+                                          class="fa fa-check-circle text-success fa-lg"
+                                          title="Réussi"/>
+                                </td>
+                                <td style="padding:6px 8px; font-weight:bold;">
+                                    Amortissements
+                                </td>
+                                <td style="padding:6px 8px;">
+                                    <field name="msg_depreciation" readonly="1" nolabel="1"/>
+                                </td>
+                            </tr>
+                            <!-- Ligne 4 : Rapprochement -->
+                            <tr style="background:#f8f9fa;">
+                                <td style="width:32px; text-align:center; padding:6px 4px;">
+                                    <span invisible="check_reconciled"
+                                          class="fa fa-times-circle text-danger fa-lg"
+                                          title="Échec"/>
+                                    <span invisible="not check_reconciled"
+                                          class="fa fa-check-circle text-success fa-lg"
+                                          title="Réussi"/>
+                                </td>
+                                <td style="padding:6px 8px; font-weight:bold;">
+                                    Rapprochement bancaire
+                                </td>
+                                <td style="padding:6px 8px;">
+                                    <field name="msg_reconciled" readonly="1" nolabel="1"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Détail : Écritures en brouillon -->
+                        <div invisible="check_no_draft" style="margin-top:8px;">
+                            <div class="alert alert-danger" role="alert" style="padding:6px 12px; margin-bottom:4px;">
+                                <i class="fa fa-exclamation-triangle me-1" title="Attention"/>
+                                <strong>Écritures en brouillon à traiter :</strong>
+                            </div>
+                            <field name="draft_move_ids" readonly="1" nolabel="1">
+                                <tree create="false" delete="false" editable="false">
+                                    <field name="name" string="Référence"/>
+                                    <field name="date" string="Date"/>
+                                    <field name="journal_id" string="Journal"/>
+                                    <field name="ref" string="Libellé"/>
+                                    <field name="amount_total" string="Montant"/>
+                                    <field name="state" string="État" widget="badge"
+                                           decoration-warning="state == 'draft'"/>
+                                </tree>
+                            </field>
+                        </div>
+
+                        <!-- Détail : Dotations non comptabilisées -->
+                        <div invisible="check_depreciation" style="margin-top:8px;">
+                            <div class="alert alert-danger" role="alert" style="padding:6px 12px; margin-bottom:4px;">
+                                <i class="fa fa-exclamation-triangle me-1" title="Attention"/>
+                                <strong>Dotations aux amortissements non comptabilisées :</strong>
+                            </div>
+                            <field name="unposted_dep_ids" readonly="1" nolabel="1">
+                                <tree create="false" delete="false" editable="false">
+                                    <field name="asset_id" string="Immobilisation"/>
+                                    <field name="depreciation_date" string="Date"/>
+                                    <field name="depreciation_amount" string="Dotation (MAD)"/>
+                                    <field name="sequence" string="N°"/>
+                                    <field name="state" string="État" widget="badge"
+                                           decoration-warning="state == 'draft'"/>
+                                </tree>
+                            </field>
+                        </div>
+
+                        <!-- Détail : Transactions non rapprochées (avertissement) -->
+                        <div invisible="not unreconciled_line_ids" style="margin-top:8px;">
+                            <div class="alert alert-warning" role="alert" style="padding:6px 12px; margin-bottom:4px;">
+                                <i class="fa fa-info-circle me-1" title="Information"/>
+                                <strong>Transactions bancaires non rapprochées (non bloquant) :</strong>
+                            </div>
+                            <field name="unreconciled_line_ids" readonly="1" nolabel="1">
+                                <tree create="false" delete="false" editable="false">
+                                    <field name="date" string="Date"/>
+                                    <field name="journal_id" string="Journal"/>
+                                    <field name="payment_ref" string="Référence"/>
+                                    <field name="amount" string="Montant"
+                                           decoration-danger="amount &lt; 0"
+                                           decoration-success="amount &gt; 0"/>
+                                    <field name="partner_id" string="Partenaire"/>
+                                </tree>
+                            </field>
+                        </div>
+
+                    </div>
+
+                    <!-- ── Étape 3 : Options à-nouveaux (annuel) ── -->
+                    <group string="3. Options à-nouveaux (clôture annuelle)"
+                           invisible="close_type != 'annual'">
+                        <group>
+                            <field name="generate_opening"/>
+                            <field name="opening_journal_id"
+                                   invisible="not generate_opening"
+                                   required="close_type == 'annual' and generate_opening"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group invisible="not generate_opening">
+                            <field name="account_result_id"
+                                   required="close_type == 'annual' and generate_opening"
+                                   options="{'no_create': True}"
+                                   string="Compte résultat Bénéfice (119100)"/>
+                            <field name="account_result_loss_id"
+                                   required="close_type == 'annual' and generate_opening"
+                                   options="{'no_create': True}"
+                                   string="Compte résultat Perte (119900)"/>
+                        </group>
+                        <div class="text-muted" style="font-size:12px; padding: 4px 8px;"
+                             invisible="not generate_opening">
+                            <i class="fa fa-info-circle" title="Information"/>
+                            Bilan (1xx-5xx) reporté. Bénéfice → <b>119100</b>. Perte → <b>119900</b>.
+                        </div>
+                    </group>
+
+                    <!-- Alerte succès -->
+                    <div class="alert alert-success" role="alert"
+                         invisible="not all_checks_ok" style="margin-top:8px;">
+                        <i class="fa fa-check-circle me-1" title="Succès"/>
+                        <strong>Tous les contrôles sont réussis.</strong>
+                        Vous pouvez procéder à la clôture.
+                    </div>
+
+                    <!-- Alerte blocage -->
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not checks_done or all_checks_ok" style="margin-top:8px;">
+                        <i class="fa fa-exclamation-triangle me-1" title="Attention"/>
+                        <strong>Des contrôles ont échoué.</strong>
+                        Corrigez les anomalies avant de clôturer.
+                    </div>
+
+                </sheet>
+                <footer>
+                    <button name="action_run_checks" type="object"
+                            string="Lancer les contrôles" class="btn-primary"
+                            invisible="checks_done"/>
+                    <button name="action_run_checks" type="object"
+                            string="Re-lancer les contrôles" class="btn-secondary"
+                            invisible="not checks_done"/>
+                    <button name="action_close_period" type="object"
+                            string="Clôturer la période" class="btn-primary"
+                            invisible="not all_checks_ok"
+                            confirm="Confirmer la clôture ? Cette action verrouille la période et est irréversible."/>
+                    <button special="cancel" string="Annuler" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- ACTIONS                                                              -->
+    <!-- ================================================================== -->
+    <record id="action_period_close_wizard" model="ir.actions.act_window">
+        <field name="name">Clôture Comptable</field>
+        <field name="res_model">period.close.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="action_period_close_history" model="ir.actions.act_window">
+        <field name="name">Historique des Clôtures</field>
+        <field name="res_model">account.period.close</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aucune clôture effectuée.
+            </p>
+            <p>Utilisez "Clôture Comptable" pour clôturer une période.</p>
+        </field>
+    </record>
+
+</odoo>
