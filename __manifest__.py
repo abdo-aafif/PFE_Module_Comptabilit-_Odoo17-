@@ -17,9 +17,9 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.4.0',
+    'version': '17.0.1.5.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (TVA mensuelle/trimestrielle, calcul automatique, export SIMPL-TVA DGI)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base (Balance, Grand Livre, Balance Âgée, Journal Centralisateur)',
     'description': """
 Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
@@ -57,6 +57,12 @@ Section 3.1.5 du CDC : Déclarations Fiscales
   • Ventilation par taux + détail d'audit par facture/lettrage
   • Gestion des taux TVA marocains (20%, 14%, 10%, 7%, 0%) — fournis par l10n_ma
   • Export XML pour télédéclaration SIMPL-TVA (DGI Maroc) : Relevé des Déductions
+
+Section 3.1.6 du CDC : Reporting de Base
+  • Balance générale (vue SQL agrégée par compte)
+  • Grand livre (écritures détaillées + solde progressif par compte)
+  • Balance âgée clients / fournisseurs (échéancier 0-30 / 30-60 / 60-90 / +90 jours)
+  • Journal centralisateur (totaux Débit/Crédit par journal)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -102,6 +108,8 @@ Section 3.1.5 du CDC : Déclarations Fiscales
         # 3.1.5 Déclarations Fiscales (TVA + SIMPL-TVA)
         'wizard/simpl_tva_wizard_views.xml',
         'views/account_tva_declaration_views.xml',
+        # 3.1.6 Reporting de Base (Balance, Grand Livre, Balance Âgée, Centralisateur)
+        'views/compta_custom_reports_views.xml',
         'views/menus.xml',
     ],
 
