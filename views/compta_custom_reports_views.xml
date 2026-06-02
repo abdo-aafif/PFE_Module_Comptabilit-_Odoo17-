@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- =========================== -->
+    <!-- 1. BALANCE GÉNÉRALE         -->
+    <!-- =========================== -->
+    <record id="view_compta_balance_generale_tree" model="ir.ui.view">
+        <field name="name">compta.balance.generale.tree</field>
+        <field name="model">compta.balance.generale</field>
+        <field name="arch" type="xml">
+            <tree string="Balance Générale" create="false" edit="false" delete="false" default_order="account_id">
+                <field name="account_id" string="Compte / Nom"/>
+                <field name="debit" sum="Total Débit"/>
+                <field name="credit" sum="Total Crédit"/>
+                <field name="balance" sum="Solde Final"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_compta_balance_generale" model="ir.actions.act_window">
+        <field name="name">Balance Générale</field>
+        <field name="res_model">compta.balance.generale</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">Aucune écriture comptable validée pour le moment.</p>
+        </field>
+    </record>
+
+    <!-- =========================== -->
+    <!-- 2. GRAND LIVRE              -->
+    <!-- =========================== -->
+    <record id="view_compta_grand_livre_tree" model="ir.ui.view">
+        <field name="name">compta.grand.livre.tree</field>
+        <field name="model">compta.grand.livre</field>
+        <field name="arch" type="xml">
+            <tree string="Grand Livre" create="false" edit="false" delete="false"
+                  default_order="account_id, date, id">
+                <field name="date"/>
+                <field name="move_name" string="N° Pièce"/>
+                <field name="journal_id"/>
+                <field name="account_id" optional="show"/>
+                <field name="partner_id" optional="show"/>
+                <field name="label" string="Libellé"/>
+                <field name="ref" optional="hide"/>
+                <field name="debit" sum="Total Débit"/>
+                <field name="credit" sum="Total Crédit"/>
+                <field name="balance" string="Solde Progressif"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_compta_grand_livre_search" model="ir.ui.view">
+        <field name="name">compta.grand.livre.search</field>
+        <field name="model">compta.grand.livre</field>
+        <field name="arch" type="xml">
+            <search string="Grand Livre">
+                <field name="account_id"/>
+                <field name="partner_id"/>
+                <field name="journal_id"/>
+                <field name="move_name"/>
+                <field name="label"/>
+                <field name="ref"/>
+                <filter string="Date" name="filter_date" date="date"/>
+                <group expand="1" string="Regrouper par">
+                    <filter string="Compte" name="groupby_account"
+                            context="{'group_by': 'account_id'}"/>
+                    <filter string="Journal" name="groupby_journal"
+                            context="{'group_by': 'journal_id'}"/>
+                    <filter string="Partenaire" name="groupby_partner"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter string="Date" name="groupby_date"
+                            context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_compta_grand_livre" model="ir.actions.act_window">
+        <field name="name">Grand Livre</field>
+        <field name="res_model">compta.grand.livre</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[]</field>
+        <field name="search_view_id" ref="view_compta_grand_livre_search"/>
+        <field name="context">{'search_default_groupby_account': 1}</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">Aucune écriture comptable validée pour le moment.</p>
+          <p>Le Grand Livre liste, compte par compte, l'ensemble des écritures validées avec un solde progressif.</p>
+        </field>
+    </record>
+
+    <!-- ============================================= -->
+    <!-- 3. BALANCE ÂGÉE (Clients / Fournisseurs)      -->
+    <!-- ============================================= -->
+    <record id="view_compta_balance_agee_tree" model="ir.ui.view">
+        <field name="name">compta.balance.agee.tree</field>
+        <field name="model">compta.balance.agee</field>
+        <field name="arch" type="xml">
+            <tree string="Balance Âgée" create="false" edit="false" delete="false">
+                <field name="partner_id"/>
+                <field name="jour_0_30" sum="Total"/>
+                <field name="jour_30_60" sum="Total"/>
+                <field name="jour_60_90" sum="Total"/>
+                <field name="jour_plus_90" sum="Total"/>
+                <field name="total" sum="Total" decoration-bf="1"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_compta_balance_agee_client" model="ir.actions.act_window">
+        <field name="name">Balance Âgée Clients</field>
+        <field name="res_model">compta.balance.agee</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('account_type', '=', 'asset_receivable')]</field>
+    </record>
+
+    <record id="action_compta_balance_agee_fournisseur" model="ir.actions.act_window">
+        <field name="name">Balance Âgée Fournisseurs</field>
+        <field name="res_model">compta.balance.agee</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('account_type', '=', 'liability_payable')]</field>
+    </record>
+
+    <!-- =========================== -->
+    <!-- 4. JOURNAL CENTRALISATEUR   -->
+    <!-- =========================== -->
+    <record id="view_compta_journal_centralisateur_tree" model="ir.ui.view">
+        <field name="name">compta.journal.centralisateur.tree</field>
+        <field name="model">compta.journal.centralisateur</field>
+        <field name="arch" type="xml">
+            <tree string="Journal Centralisateur" create="false" edit="false" delete="false">
+                <field name="journal_id"/>
+                <field name="debit" sum="Total Débit"/>
+                <field name="credit" sum="Total Crédit"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_compta_journal_centralisateur" model="ir.actions.act_window">
+        <field name="name">Journal Centralisateur</field>
+        <field name="res_model">compta.journal.centralisateur</field>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

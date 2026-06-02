@@ -6,3 +6,7 @@ access_simpl_tva_wizard,simpl.tva.wizard,model_simpl_tva_wizard,,1,1,1,1
 access_account_tva_declaration,account.tva.declaration,model_account_tva_declaration,,1,1,1,1
 access_account_tva_declaration_line,account.tva.declaration.line,model_account_tva_declaration_line,,1,1,1,1
 access_account_tva_declaration_detail,account.tva.declaration.detail,model_account_tva_declaration_detail,,1,1,1,1
+access_compta_balance_generale,compta.balance.generale,model_compta_balance_generale,,1,0,0,0
+access_compta_grand_livre,compta.grand.livre,model_compta_grand_livre,,1,0,0,0
+access_compta_balance_agee,compta.balance.agee,model_compta_balance_agee,,1,0,0,0
+access_compta_journal_centralisateur,compta.journal.centralisateur,model_compta_journal_centralisateur,,1,0,0,0

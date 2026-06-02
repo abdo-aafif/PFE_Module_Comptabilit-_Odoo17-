@@ -55,5 +55,37 @@
             <field name="global" eval="True"/>
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
+
+        <!-- ================================================================
+             Section 3.1.6 du CDC : Reporting de Base (vues SQL)
+             Règles multi-sociétés pour isoler les rapports par société.
+             ================================================================ -->
+        <record id="rule_compta_balance_generale_company" model="ir.rule">
+            <field name="name">Balance Générale : accès par société</field>
+            <field name="model_id" ref="model_compta_balance_generale"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_compta_grand_livre_company" model="ir.rule">
+            <field name="name">Grand Livre : accès par société</field>
+            <field name="model_id" ref="model_compta_grand_livre"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_compta_journal_centralisateur_company" model="ir.rule">
+            <field name="name">Journal Centralisateur : accès par société</field>
+            <field name="model_id" ref="model_compta_journal_centralisateur"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_compta_balance_agee_company" model="ir.rule">
+            <field name="name">Balance Âgée : accès par société</field>
+            <field name="model_id" ref="model_compta_balance_agee"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

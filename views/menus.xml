@@ -79,17 +79,55 @@
               action="action_compta_lettrage_historique"
               sequence="2"/>
 
-    <!-- 5. Rapports (Reporting Analytique uniquement en P1) -->
+    <!-- 5. Rapports Comptables (3.1.6 Reporting de Base + Analytique) -->
     <menuitem id="menu_compta_reporting"
               name="Rapports Comptables"
               parent="menu_comptabilite_maroc_root"
               sequence="9"/>
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.1.6 — REPORTING DE BASE (Menus)
+           • Balance générale
+           • Grand livre
+           • Balance âgée clients / fournisseurs
+           • Journal centralisateur
+         ══════════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_compta_reporting_balance"
+              name="Balance Générale"
+              parent="menu_compta_reporting"
+              action="action_compta_balance_generale"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_reporting_gl"
+              name="Grand Livre"
+              parent="menu_compta_reporting"
+              action="action_compta_grand_livre"
+              sequence="2"/>
+
+    <menuitem id="menu_compta_reporting_agee_client"
+              name="Balance Âgée Clients"
+              parent="menu_compta_reporting"
+              action="action_compta_balance_agee_client"
+              sequence="3"/>
+
+    <menuitem id="menu_compta_reporting_agee_fourn"
+              name="Balance Âgée Fournisseurs"
+              parent="menu_compta_reporting"
+              action="action_compta_balance_agee_fournisseur"
+              sequence="4"/>
+
+    <menuitem id="menu_compta_reporting_centralisateur"
+              name="Journal Centralisateur"
+              parent="menu_compta_reporting"
+              action="action_compta_journal_centralisateur"
+              sequence="5"/>
+
+    <!-- Reporting Analytique (3.1.1 CDC — Tous Plans Analytiques) -->
     <menuitem id="menu_compta_reporting_analytic"
               name="Suivi Analytique (par Plan Comptable Analytique)"
               parent="menu_compta_reporting"
               action="action_compta_analytic_lines"
-              sequence="1"/>
+              sequence="6"/>
 
     <!-- 6. Configuration (Plan Comptable + Journaux + Taxes + Analytique) -->
     <menuitem id="menu_compta_configuration"

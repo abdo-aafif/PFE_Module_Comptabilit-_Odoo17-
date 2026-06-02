@@ -31,3 +31,5 @@ from . import account_recurring
 # Section 3.1.5 du CDC : Déclarations Fiscales
 from . import res_company
 from . import account_tva_declaration
+# Section 3.1.6 du CDC : Reporting de Base (vues SQL)
+from . import compta_reports_sql
