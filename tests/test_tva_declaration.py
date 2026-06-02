@@ -276,7 +276,7 @@ class _TvaComputeCommon(TransactionCase):
         calcul cash basis.
         """
         amount = amount if amount is not None else invoice.amount_total
-        ar_ap_line = invoice.line_ids.filtered(lambda l: l.account_id.account_type in (
+        ar_ap_line = invoice.line_ids.filtered(lambda ln: ln.account_id.account_type in (
             'asset_receivable', 'liability_payable',
         ))
         # Le paiement doit créer le signe opposé sur le compte client/fournisseur
@@ -310,7 +310,7 @@ class _TvaComputeCommon(TransactionCase):
         payment_move.action_post()
 
         pay_line = payment_move.line_ids.filtered(
-            lambda l: l.account_id == ar_ap_line.account_id
+            lambda ln: ln.account_id == ar_ap_line.account_id
         )
         (ar_ap_line + pay_line).reconcile()
         return payment_move
@@ -465,12 +465,12 @@ class TestTvaTauxMarocains(_TvaComputeCommon):
         decl.action_compute_tva()
 
         self.assertAlmostEqual(decl.tva_deductible, 250.0, places=2)
-        l_20 = decl.line_ids.filtered(lambda l: abs(l.taux - 20.0) < 0.01)
-        l_10 = decl.line_ids.filtered(lambda l: abs(l.taux - 10.0) < 0.01)
-        self.assertEqual(len(l_20), 1)
-        self.assertEqual(len(l_10), 1)
-        self.assertAlmostEqual(l_20.montant_tva, 200.0, places=2)
-        self.assertAlmostEqual(l_10.montant_tva, 50.0, places=2)
+        ligne_20 = decl.line_ids.filtered(lambda ln: abs(ln.taux - 20.0) < 0.01)
+        ligne_10 = decl.line_ids.filtered(lambda ln: abs(ln.taux - 10.0) < 0.01)
+        self.assertEqual(len(ligne_20), 1)
+        self.assertEqual(len(ligne_10), 1)
+        self.assertAlmostEqual(ligne_20.montant_tva, 200.0, places=2)
+        self.assertAlmostEqual(ligne_10.montant_tva, 50.0, places=2)
 
 
 # =============================================================================
