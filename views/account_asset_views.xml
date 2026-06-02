@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================== -->
+    <!-- 1. CATÉGORIE D'IMMOBILISATION                                       -->
+    <!-- ================================================================== -->
+
+    <record id="view_asset_category_tree" model="ir.ui.view">
+        <field name="name">account.asset.category.tree</field>
+        <field name="model">account.asset.category</field>
+        <field name="arch" type="xml">
+            <tree string="Catégories d'immobilisations">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="method"/>
+                <field name="duration_years"/>
+                <field name="account_asset_id"/>
+                <field name="account_depreciation_id"/>
+                <field name="account_expense_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_asset_category_form" model="ir.ui.view">
+        <field name="name">account.asset.category.form</field>
+        <field name="model">account.asset.category</field>
+        <field name="arch" type="xml">
+            <form string="Catégorie d'immobilisation">
+                <sheet>
+                    <group>
+                        <group string="Identification">
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="company_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Amortissement par défaut">
+                            <field name="method"/>
+                            <field name="duration_years"/>
+                        </group>
+                    </group>
+                    <group string="Comptes comptables (PCGE)">
+                        <group>
+                            <field name="account_asset_id"
+                                   domain="[('code', 'like', '2')]"
+                                   options="{'no_create': True}"/>
+                            <field name="account_depreciation_id"
+                                   domain="[('code', 'like', '28')]"
+                                   options="{'no_create': True}"/>
+                            <field name="account_expense_id"
+                                   domain="[('code', 'like', '619')]"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="account_gain_id"
+                                   domain="[('code', 'like', '75')]"
+                                   options="{'no_create': True}"/>
+                            <field name="account_loss_id"
+                                   domain="[('code', 'like', '65')]"
+                                   options="{'no_create': True}"/>
+                            <field name="journal_id"
+                                   domain="[('type', '=', 'general')]"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group string="Notes / Taux CGI indicatifs">
+                        <field name="note" nolabel="1"
+                               placeholder="Ex: Taux linéaire 15% - durée fiscale 6,67 ans"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_asset_category" model="ir.actions.act_window">
+        <field name="name">Catégories d'immobilisations</field>
+        <field name="res_model">account.asset.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- 2. FICHE IMMOBILISATION                                              -->
+    <!-- ================================================================== -->
+
+    <record id="view_account_asset_tree" model="ir.ui.view">
+        <field name="name">account.asset.tree</field>
+        <field name="model">account.asset</field>
+        <field name="arch" type="xml">
+            <tree string="Immobilisations"
+                  decoration-muted="state == 'disposed'"
+                  decoration-success="state == 'close'"
+                  decoration-info="state == 'open'">
+                <field name="ref"               optional="show"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="acquisition_date"/>
+                <field name="commissioning_date"/>
+                <field name="acquisition_value"/>
+                <field name="method"/>
+                <field name="duration_years"    string="Durée (ans)"/>
+                <field name="value_depreciated" optional="show"/>
+                <field name="value_residual"    string="VNC"/>
+                <field name="state"
+                       widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state in ('open','close')"
+                       decoration-danger="state == 'disposed'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_account_asset_form" model="ir.ui.view">
+        <field name="name">account.asset.form</field>
+        <field name="model">account.asset</field>
+        <field name="arch" type="xml">
+            <form string="Immobilisation">
+                <header>
+                    <!-- Workflow buttons -->
+                    <button name="action_validate"
+                            string="Mettre en service"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_compute_depreciation"
+                            string="Recalculer le tableau"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state not in ('draft','open')"/>
+                    <button name="action_open_disposal_wizard"
+                            string="Céder / Mettre au rebut"
+                            type="object"
+                            class="btn-warning"
+                            invisible="state not in ('open','close')"/>
+                    <button name="action_set_draft"
+                            string="Remettre en brouillon"
+                            type="object"
+                            invisible="state != 'open'"/>
+                    <button name="action_print_depreciation_table"
+                            string="Imprimer tableau PDF"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,open,close,disposed"/>
+                </header>
+                <sheet>
+                    <!-- KPI banner -->
+                    <div class="oe_title mb-0">
+                        <h1><field name="name" placeholder="Désignation de l'immobilisation…"/></h1>
+                    </div>
+                    <div class="o_field_widget oe_right oe_kanban_badge" invisible="state == 'draft'">
+                        <div class="row text-center">
+                            <div class="col-4 border-end">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_value">
+                                        <field name="acquisition_value" widget="monetary"/>
+                                    </span>
+                                    <span class="o_stat_text">Valeur d'acquisition</span>
+                                </div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_value">
+                                        <field name="value_depreciated" widget="monetary"/>
+                                    </span>
+                                    <span class="o_stat_text">Amort. cumulés</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_value">
+                                        <field name="value_residual" widget="monetary"/>
+                                    </span>
+                                    <span class="o_stat_text">VNC</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <group>
+                        <group string="Identification">
+                            <field name="ref"/>
+                            <field name="category_id" options="{'no_create': True}"/>
+                            <field name="company_id"  options="{'no_create': True}"/>
+                        </group>
+                        <group string="Acquisition">
+                            <field name="acquisition_date"/>
+                            <field name="commissioning_date"/>
+                            <field name="acquisition_value"/>
+                            <field name="residual_value"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Amortissement">
+                            <field name="method"/>
+                            <field name="duration_years"/>
+                        </group>
+                        <group string="Cession" invisible="state != 'disposed'">
+                            <field name="disposal_date" readonly="1"/>
+                            <field name="disposal_move_id" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- ── Tableau d'amortissement ─────────────────── -->
+                        <page string="Tableau d'amortissement" name="depreciation">
+                            <field name="depreciation_line_ids"
+                                   readonly="state == 'disposed'">
+                                <tree editable="bottom"
+                                      decoration-success="state == 'posted'"
+                                      decoration-muted="state == 'draft'">
+                                    <field name="sequence"            column_invisible="1"/>
+                                    <field name="depreciation_date"   string="Date"/>
+                                    <field name="months"              string="Mois" optional="show"/>
+                                    <field name="rate"                string="Taux (%)" optional="show"
+                                           digits="[6,4]"/>
+                                    <field name="method_used"         string="Méthode" optional="show"/>
+                                    <field name="depreciation_amount" string="Dotation"/>
+                                    <field name="cumulated_amount"    string="Amort. cumulés"/>
+                                    <field name="remaining_value"     string="VNC"/>
+                                    <field name="state"
+                                           widget="badge"
+                                           decoration-success="state == 'posted'"
+                                           decoration-warning="state == 'draft'"/>
+                                    <field name="move_id"             optional="show" readonly="1"/>
+                                    <button name="action_post"
+                                            string="Comptabiliser"
+                                            type="object"
+                                            icon="fa-check"
+                                            invisible="state == 'posted'"
+                                            class="btn-success btn-sm"/>
+                                    <button name="action_unpost"
+                                            string="Annuler"
+                                            type="object"
+                                            icon="fa-undo"
+                                            invisible="state == 'draft'"
+                                            class="btn-danger btn-sm"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- ── Comptes comptables ──────────────────────── -->
+                        <page string="Comptes comptables" name="accounts">
+                            <group>
+                                <group>
+                                    <field name="account_asset_id"
+                                           options="{'no_create': True}"/>
+                                    <field name="account_depreciation_id"
+                                           options="{'no_create': True}"/>
+                                    <field name="account_expense_id"
+                                           options="{'no_create': True}"/>
+                                </group>
+                                <group>
+                                    <field name="account_gain_id"
+                                           options="{'no_create': True}"/>
+                                    <field name="account_loss_id"
+                                           options="{'no_create': True}"/>
+                                    <field name="journal_id"
+                                           domain="[('type','=','general')]"
+                                           options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                            <group string="Écriture d'acquisition" invisible="not purchase_move_id">
+                                <field name="purchase_move_id" readonly="1"/>
+                            </group>
+                        </page>
+
+                        <!-- ── Notes ──────────────────────────────────── -->
+                        <page string="Notes" name="notes">
+                            <field name="note" placeholder="Description, localisation, numéro de série…"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Recherche / filtres -->
+    <record id="view_account_asset_search" model="ir.ui.view">
+        <field name="name">account.asset.search</field>
+        <field name="model">account.asset</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une immobilisation">
+                <field name="name" string="Désignation"/>
+                <field name="ref"  string="N° Inventaire"/>
+                <field name="category_id"/>
+                <separator/>
+                <filter name="filter_draft"    string="Brouillon"       domain="[('state','=','draft')]"/>
+                <filter name="filter_open"     string="En service"      domain="[('state','=','open')]"/>
+                <filter name="filter_close"    string="Totalement amorti" domain="[('state','=','close')]"/>
+                <filter name="filter_disposed" string="Cédé / Rebut"    domain="[('state','=','disposed')]"/>
+                <separator/>
+                <filter name="filter_linear"     string="Méthode Linéaire"   domain="[('method','=','linear')]"/>
+                <filter name="filter_degressive" string="Méthode Dégressive" domain="[('method','=','degressive')]"/>
+                <group expand="0" string="Regrouper par">
+                    <filter name="group_category" string="Catégorie" context="{'group_by': 'category_id'}"/>
+                    <filter name="group_year"     string="Année d'acquisition"
+                            context="{'group_by': 'acquisition_date:year'}"/>
+                    <filter name="group_state"    string="État" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_account_asset" model="ir.actions.act_window">
+        <field name="name">Immobilisations</field>
+        <field name="res_model">account.asset</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_filter_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créez votre première immobilisation.
+            </p>
+            <p>
+                Renseignez la fiche, choisissez la méthode d'amortissement
+                (Linéaire ou Dégressif CGI Marocain) et cliquez sur
+                <strong>Mettre en service</strong>.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================================================================== -->
+    <!-- 3. WIZARD CESSION / MISE AU REBUT                                   -->
+    <!-- ================================================================== -->
+
+    <record id="view_asset_disposal_wizard_form" model="ir.ui.view">
+        <field name="name">account.asset.disposal.wizard.form</field>
+        <field name="model">account.asset.disposal.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cession / Mise au rebut">
+                <sheet>
+                    <group string="Immobilisation concernée">
+                        <field name="asset_id"      options="{'no_create': True}"/>
+                        <field name="disposal_type" widget="radio"/>
+                        <field name="disposal_date"/>
+                    </group>
+
+                    <!-- Bloc VNC -->
+                    <group string="Situation comptable à la date de cession">
+                        <field name="acquisition_value"  readonly="1"/>
+                        <field name="value_depreciated"  readonly="1"/>
+                        <field name="vnc"                readonly="1"/>
+                    </group>
+
+                    <!-- Bloc Vente uniquement -->
+                    <group string="Détails de la vente"
+                           invisible="disposal_type != 'sale'">
+                        <field name="sale_price"/>
+                        <field name="partner_id"/>
+                        <field name="account_receivable_id"
+                               options="{'no_create': True}"
+                               domain="[('account_type', 'in', ['asset_receivable','asset_current'])]"/>
+                    </group>
+
+                    <!-- Résultat -->
+                    <group string="Résultat de la cession">
+                        <field name="result_amount"
+                               readonly="1"
+                               decoration-success="result_type == 'gain'"
+                               decoration-danger="result_type == 'loss'"/>
+                        <field name="result_type" widget="badge"
+                               decoration-success="result_type == 'gain'"
+                               decoration-danger="result_type == 'loss'"
+                               decoration-muted="result_type == 'zero'"/>
+                    </group>
+
+                    <div class="alert alert-warning" role="alert"
+                         invisible="disposal_type != 'rebut'">
+                        <strong>Mise au rebut :</strong>
+                        La totalité de la VNC (
+                        <field name="vnc" readonly="1" nolabel="1" widget="monetary"/>)
+                        sera comptabilisée en <strong>perte</strong> (compte de charges non courantes).
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_dispose"
+                            string="Valider et comptabiliser"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

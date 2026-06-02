@@ -17,9 +17,9 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.5.0',
+    'version': '17.0.1.6.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base (Balance, Grand Livre, Balance Âgée, Journal Centralisateur)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Gestion des Immobilisations (amortissements linéaire/dégressif CGI, cession/rebut)',
     'description': """
 Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
@@ -63,6 +63,12 @@ Section 3.1.6 du CDC : Reporting de Base
   • Grand livre (écritures détaillées + solde progressif par compte)
   • Balance âgée clients / fournisseurs (échéancier 0-30 / 30-60 / 60-90 / +90 jours)
   • Journal centralisateur (totaux Débit/Crédit par journal)
+
+Section 3.2.2 du CDC : Gestion des Immobilisations
+  • Fiche immobilisation (acquisition, mise en service) + catégories paramétrables
+  • Calcul automatique des amortissements : linéaire et dégressif (CGI marocain, prorata temporis)
+  • Tableau d'amortissement (vue + impression PDF) avec basculement dégressif→linéaire
+  • Cession / mise au rebut avec génération automatique de l'écriture de sortie (plus/moins-value)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -110,6 +116,10 @@ Section 3.1.6 du CDC : Reporting de Base
         'views/account_tva_declaration_views.xml',
         # 3.1.6 Reporting de Base (Balance, Grand Livre, Balance Âgée, Centralisateur)
         'views/compta_custom_reports_views.xml',
+        # 3.2.2 Gestion des Immobilisations (fiches, amortissements, cession/rebut)
+        'views/account_asset_views.xml',
+        'reports/asset_report.xml',
+        'wizard/asset_disposal_wizard_views.xml',
         'views/menus.xml',
     ],
 

@@ -10,3 +10,7 @@ access_compta_balance_generale,compta.balance.generale,model_compta_balance_gene
 access_compta_grand_livre,compta.grand.livre,model_compta_grand_livre,,1,0,0,0
 access_compta_balance_agee,compta.balance.agee,model_compta_balance_agee,,1,0,0,0
 access_compta_journal_centralisateur,compta.journal.centralisateur,model_compta_journal_centralisateur,,1,0,0,0
+access_account_asset_category,account.asset.category,model_account_asset_category,,1,1,1,1
+access_account_asset,account.asset,model_account_asset,,1,1,1,1
+access_account_asset_depreciation_line,account.asset.depreciation.line,model_account_asset_depreciation_line,,1,1,1,1
+access_account_asset_disposal_wizard,account.asset.disposal.wizard,model_account_asset_disposal_wizard,,1,1,1,1

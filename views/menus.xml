@@ -254,4 +254,27 @@
               action="action_simpl_tva_wizard"
               sequence="2"/>
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.2.2 — GESTION DES IMMOBILISATIONS (Menus)
+           • Fiche immobilisation (acquisition, mise en service)
+           • Amortissements (linéaire / dégressif) + tableau
+           • Cession / mise au rebut
+         ══════════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_compta_immobilisations"
+              name="Immobilisations"
+              parent="menu_comptabilite_maroc_root"
+              sequence="7"/>
+
+    <menuitem id="menu_compta_asset_list"
+              name="Fiches Immobilisations"
+              parent="menu_compta_immobilisations"
+              action="action_account_asset"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_asset_category"
+              name="Catégories d'immobilisations"
+              parent="menu_compta_immobilisations"
+              action="action_asset_category"
+              sequence="2"/>
+
 </odoo>

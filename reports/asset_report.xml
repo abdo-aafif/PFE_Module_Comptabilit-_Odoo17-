@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================== -->
+    <!-- TEMPLATE – TABLEAU D'AMORTISSEMENT                                  -->
+    <!-- ================================================================== -->
+    <template id="tmpl_report_asset_depreciation">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <!-- En-tête société -->
+                        <div class="row mb-3">
+                            <div class="col-7">
+                                <strong style="font-size:14px;">
+                                    <t t-esc="doc.company_id.name"/>
+                                </strong><br/>
+                                <span class="text-muted">
+                                    <t t-esc="doc.company_id.street or ''"/>
+                                    <t t-if="doc.company_id.city">,
+                                        <t t-esc="doc.company_id.city"/>
+                                    </t>
+                                </span>
+                            </div>
+                            <div class="col-5 text-end">
+                                <h3 class="mb-0">Tableau d'Amortissement</h3>
+                                <small class="text-muted">
+                                    Imprimé le <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/>
+                                </small>
+                            </div>
+                        </div>
+
+                        <hr/>
+
+                        <!-- Fiche de l'immobilisation -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless" style="font-size:12px;">
+                                    <tr>
+                                        <td class="fw-bold" style="width:45%">Désignation :</td>
+                                        <td><t t-esc="doc.name"/></td>
+                                    </tr>
+                                    <tr t-if="doc.ref">
+                                        <td class="fw-bold">N° Inventaire :</td>
+                                        <td><t t-esc="doc.ref"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Catégorie :</td>
+                                        <td><t t-esc="doc.category_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Date d'acquisition :</td>
+                                        <td><t t-esc="doc.acquisition_date.strftime('%d/%m/%Y')"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Date de mise en service :</td>
+                                        <td><t t-esc="doc.commissioning_date.strftime('%d/%m/%Y')"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-6">
+                                <table class="table table-sm table-borderless" style="font-size:12px;">
+                                    <tr>
+                                        <td class="fw-bold" style="width:55%">Valeur d'acquisition :</td>
+                                        <td class="text-end fw-bold">
+                                            <t t-esc="'{:,.2f}'.format(doc.acquisition_value)"/> MAD
+                                        </td>
+                                    </tr>
+                                    <tr t-if="doc.residual_value">
+                                        <td class="fw-bold">Valeur résiduelle :</td>
+                                        <td class="text-end">
+                                            <t t-esc="'{:,.2f}'.format(doc.residual_value)"/> MAD
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Méthode :</td>
+                                        <td>
+                                            <t t-if="doc.method == 'linear'">Linéaire</t>
+                                            <t t-else="">Dégressif (CGI Marocain)</t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Durée :</td>
+                                        <td><t t-esc="doc.duration_years"/> ans</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Taux linéaire :</td>
+                                        <td>
+                                            <t t-esc="'{:.2f}'.format(100.0 / doc.duration_years)"/> %
+                                        </td>
+                                    </tr>
+                                    <t t-if="doc.method == 'degressive'">
+                                        <tr>
+                                            <td class="fw-bold">Coefficient CGI :</td>
+                                            <td>
+                                                <t t-if="doc.duration_years &lt;= 4">1,5</t>
+                                                <t t-elif="doc.duration_years &lt;= 6">2,0</t>
+                                                <t t-else="">3,0</t>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Tableau d'amortissement -->
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <thead class="table-dark text-center">
+                                <tr>
+                                    <th style="width:4%">N°</th>
+                                    <th style="width:12%">Date</th>
+                                    <th style="width:6%">Mois</th>
+                                    <th style="width:10%">Taux (%)</th>
+                                    <th style="width:14%">Méthode</th>
+                                    <th style="width:16%">Dotation (MAD)</th>
+                                    <th style="width:16%">Amort. cumulés</th>
+                                    <th style="width:16%">VNC (MAD)</th>
+                                    <th style="width:6%">État</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Ligne d'ouverture -->
+                                <tr class="table-light fw-bold">
+                                    <td class="text-center">0</td>
+                                    <td class="text-center">
+                                        <t t-esc="doc.commissioning_date.strftime('%d/%m/%Y')"/>
+                                    </td>
+                                    <td colspan="5" class="text-center text-muted">
+                                        — Mise en service —
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <t t-esc="'{:,.2f}'.format(doc.acquisition_value)"/>
+                                    </td>
+                                    <td/>
+                                </tr>
+
+                                <t t-foreach="doc.depreciation_line_ids.sorted('depreciation_date')" t-as="line">
+                                    <tr t-att-class="'table-success' if line.state == 'posted' else ''">
+                                        <td class="text-center">
+                                            <t t-esc="line.sequence"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <t t-esc="line.depreciation_date.strftime('%d/%m/%Y')"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <t t-esc="line.months"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <t t-esc="'{:.4f}'.format(line.rate)"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <t t-if="line.method_used == 'linear'">Linéaire</t>
+                                            <t t-elif="line.method_used == 'degressive'">Dégressif</t>
+                                            <t t-else="">Linéaire*</t>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-esc="'{:,.2f}'.format(line.depreciation_amount)"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <t t-esc="'{:,.2f}'.format(line.cumulated_amount)"/>
+                                        </td>
+                                        <td class="text-end fw-bold">
+                                            <t t-esc="'{:,.2f}'.format(line.remaining_value)"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-if="line.state == 'posted'"
+                                                  class="badge bg-success">✓</span>
+                                            <span t-else=""
+                                                  class="badge bg-secondary">–</span>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot class="table-dark">
+                                <tr>
+                                    <td colspan="5" class="fw-bold">TOTAL</td>
+                                    <td class="text-end fw-bold">
+                                        <t t-esc="'{:,.2f}'.format(doc.acquisition_value - doc.residual_value)"/>
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <t t-esc="'{:,.2f}'.format(doc.value_depreciated)"/>
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <t t-esc="'{:,.2f}'.format(doc.value_residual)"/>
+                                    </td>
+                                    <td/>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- Légende -->
+                        <div class="row mt-2" style="font-size:10px; color:#666;">
+                            <div class="col-12">
+                                <t t-if="doc.method == 'degressive'">
+                                    * Linéaire* = basculement automatique au linéaire (CGI Art. 7) dès
+                                    qu'il est plus avantageux que le dégressif.
+                                </t>
+                                <span class="badge bg-success me-1">✓</span> = Écriture comptabilisée
+                                &#160;&#160;
+                                <span class="badge bg-secondary me-1">–</span> = À comptabiliser
+                            </div>
+                        </div>
+
+                        <!-- Comptes utilisés -->
+                        <div class="row mt-3" style="font-size:10px;">
+                            <div class="col-12">
+                                <strong>Comptes comptables :</strong>
+                                Immobilisation :
+                                <t t-esc="doc.account_asset_id.code if doc.account_asset_id else '–'"/>
+                                | Amortissement :
+                                <t t-esc="doc.account_depreciation_id.code if doc.account_depreciation_id else '–'"/>
+                                | Dotation :
+                                <t t-esc="doc.account_expense_id.code if doc.account_expense_id else '–'"/>
+                                | Journal :
+                                <t t-esc="doc.journal_id.name if doc.journal_id else '–'"/>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Action rapport -->
+    <record id="action_report_asset_depreciation" model="ir.actions.report">
+        <field name="name">Tableau d'amortissement</field>
+        <field name="model">account.asset</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pfe.tmpl_report_asset_depreciation</field>
+        <field name="report_file">pfe.tmpl_report_asset_depreciation</field>
+        <field name="print_report_name">
+            'Tableau Amortissement - ' + (object.name or '') + ' - ' + (object.ref or '')
+        </field>
+        <field name="binding_model_id" ref="model_account_asset"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>
