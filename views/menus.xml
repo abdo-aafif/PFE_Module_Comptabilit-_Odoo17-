@@ -277,4 +277,28 @@
               action="action_asset_category"
               sequence="2"/>
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.2.3 — CLÔTURE COMPTABLE (Menus)
+           • Processus de clôture mensuelle / annuelle
+           • Verrouillage des périodes
+           • Génération automatique des à-nouveaux
+           • Contrôles de cohérence pré-clôture
+         ══════════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_compta_cloture"
+              name="Clôture Comptable"
+              parent="menu_comptabilite_maroc_root"
+              sequence="65"/>
+
+    <menuitem id="menu_compta_cloture_wizard"
+              name="Clôturer une Période"
+              parent="menu_compta_cloture"
+              action="action_period_close_wizard"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_cloture_history"
+              name="Historique des Clôtures"
+              parent="menu_compta_cloture"
+              action="action_period_close_history"
+              sequence="2"/>
+
 </odoo>

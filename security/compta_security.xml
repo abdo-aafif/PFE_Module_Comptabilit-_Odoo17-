@@ -105,5 +105,16 @@
             <field name="global" eval="True"/>
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
+
+        <!-- ================================================================
+             Section 3.2.3 du CDC : Clôture Comptable
+             Règle multi-sociétés pour isoler les clôtures par société.
+             ================================================================ -->
+        <record id="rule_account_period_close_company" model="ir.rule">
+            <field name="name">Clôture Comptable : accès par société</field>
+            <field name="model_id" ref="model_account_period_close"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

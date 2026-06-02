@@ -38,3 +38,6 @@ from . import compta_reports_sql
 
 # Section 3.2.2 du CDC : Gestion des Immobilisations
 from . import account_asset
+
+# Section 3.2.3 du CDC : Clôture Comptable
+from . import account_period_close
