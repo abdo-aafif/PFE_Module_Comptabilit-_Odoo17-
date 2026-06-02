@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        The form view for account.asset.disposal.wizard is defined in
+        views/account_asset_views.xml (view_asset_disposal_wizard_form).
+        This file is kept as a stub so the manifest data list is consistent.
+        It also declares the action that opens the wizard stand-alone
+        (used when called from the menu, not from the asset form button).
+    -->
+    <record id="action_asset_disposal_wizard" model="ir.actions.act_window">
+        <field name="name">Cession / Mise au rebut</field>
+        <field name="res_model">account.asset.disposal.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

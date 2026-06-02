@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         SHARED MACROS
+    ============================================================ -->
+    <template id="tmpl_fs_header">
+        <div class="row mb-3">
+            <div class="col-6">
+                <strong><t t-esc="doc.company_id.name"/></strong><br/>
+                <t t-esc="doc.company_id.street or ''"/><br/>
+                <t t-esc="doc.company_id.city or ''"/>
+            </div>
+            <div class="col-6 text-end">
+                <span>Période : </span>
+                <strong>
+                    <t t-esc="doc.date_from.strftime('%d/%m/%Y') if doc.date_from else ''"/>
+                    <t t-if="doc.date_from"> – </t>
+                    <t t-esc="doc.date_to.strftime('%d/%m/%Y')"/>
+                </strong>
+            </div>
+        </div>
+    </template>
+
+    <!-- ============================================================
+         BILAN REPORT
+    ============================================================ -->
+    <template id="tmpl_report_bilan">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center mb-4">BILAN AU <t t-esc="doc.date_to.strftime('%d/%m/%Y')"/></h2>
+                        <t t-call="pfe.tmpl_fs_header"/>
+
+                        <t t-set="actif_lines"  t-value="doc._get_bilan_lines()"/>
+
+                        <!-- Render two columns: ACTIF | PASSIF -->
+                        <t t-set="actif_rows"  t-value="[l for l in actif_lines if l.get('section') == 'actif']"/>
+                        <t t-set="passif_rows" t-value="[l for l in actif_lines if l.get('section') == 'passif']"/>
+
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width:45%">ACTIF</th>
+                                    <th class="text-end" style="width:12%">Montant</th>
+                                    <th style="width:3%"></th>
+                                    <th style="width:28%">PASSIF</th>
+                                    <th class="text-end" style="width:12%">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Zip rows side by side -->
+                                <t t-set="max_len" t-value="max(len(actif_rows), len(passif_rows))"/>
+                                <t t-foreach="range(max_len)" t-as="i">
+                                    <t t-set="al" t-value="actif_rows[i]  if i &lt; len(actif_rows)  else None"/>
+                                    <t t-set="pl" t-value="passif_rows[i] if i &lt; len(passif_rows) else None"/>
+                                    <tr t-att-class="'fw-bold table-light' if (al and al.get('is_total')) or (pl and pl.get('is_total')) else ''">
+                                        <!-- ACTIF side -->
+                                        <t t-if="al">
+                                            <td t-att-style="'padding-left:%spx' % (8 + al.get('level',1)*12)"
+                                                t-att-class="'fw-bold' if al.get('bold') else ''">
+                                                <t t-esc="al['name']"/>
+                                            </td>
+                                            <td class="text-end"
+                                                t-att-class="'fw-bold text-danger' if al.get('amount',0) &lt; 0 else 'fw-bold' if al.get('is_total') else ''">
+                                                <t t-if="al.get('level',1) != 0 or al.get('is_total')">
+                                                    <t t-esc="'{:,.2f}'.format(al.get('amount',0))"/>
+                                                </t>
+                                            </td>
+                                        </t>
+                                        <t t-else=""><td/><td/></t>
+                                        <td class="table-secondary"></td>
+                                        <!-- PASSIF side -->
+                                        <t t-if="pl">
+                                            <td t-att-style="'padding-left:%spx' % (8 + pl.get('level',1)*12)"
+                                                t-att-class="'fw-bold' if pl.get('bold') else ''">
+                                                <t t-esc="pl['name']"/>
+                                            </td>
+                                            <td class="text-end"
+                                                t-att-class="'fw-bold text-danger' if pl.get('amount',0) &lt; 0 else 'fw-bold' if pl.get('is_total') else ''">
+                                                <t t-if="pl.get('level',1) != 0 or pl.get('is_total')">
+                                                    <t t-esc="'{:,.2f}'.format(pl.get('amount',0))"/>
+                                                </t>
+                                            </td>
+                                        </t>
+                                        <t t-else=""><td/><td/></t>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_bilan" model="ir.actions.report">
+        <field name="name">Bilan</field>
+        <field name="model">financial.statement.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pfe.tmpl_report_bilan</field>
+        <field name="report_file">pfe.tmpl_report_bilan</field>
+        <field name="print_report_name">'Bilan - ' + (object.date_to.strftime('%Y%m%d') if object.date_to else '')</field>
+    </record>
+
+    <!-- ============================================================
+         CPC REPORT
+    ============================================================ -->
+    <template id="tmpl_report_cpc">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center mb-4">
+                            COMPTE DE PRODUITS ET CHARGES (CPC)<br/>
+                            <small>Du <t t-esc="doc.date_from.strftime('%d/%m/%Y') if doc.date_from else '–'"/>
+                            au <t t-esc="doc.date_to.strftime('%d/%m/%Y')"/></small>
+                        </h2>
+                        <t t-call="pfe.tmpl_fs_header"/>
+                        <t t-set="lines" t-value="doc._get_cpc_lines()"/>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Désignation</th>
+                                    <th class="text-end" style="width:20%">Montant (MAD)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="lines" t-as="line">
+                                    <tr t-att-class="'table-light fw-bold' if line.get('is_total') else ''">
+                                        <td t-att-style="'padding-left:%spx' % (8 + line.get('level',1)*14)"
+                                            t-att-class="'fw-bold' if line.get('bold') else ''">
+                                            <t t-esc="line['name']"/>
+                                        </td>
+                                        <td class="text-end"
+                                            t-att-class="'text-danger' if line.get('amount',0) &lt; 0 else ''">
+                                            <t t-esc="'{:,.2f}'.format(line.get('amount', 0))"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_cpc" model="ir.actions.report">
+        <field name="name">CPC – Compte de Résultat</field>
+        <field name="model">financial.statement.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pfe.tmpl_report_cpc</field>
+        <field name="report_file">pfe.tmpl_report_cpc</field>
+        <field name="print_report_name">'CPC - ' + (object.date_to.strftime('%Y%m%d') if object.date_to else '')</field>
+    </record>
+
+    <!-- ============================================================
+         FLUX DE TRÉSORERIE REPORT
+    ============================================================ -->
+    <template id="tmpl_report_flux">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center mb-4">
+                            TABLEAU DES FLUX DE TRÉSORERIE<br/>
+                            <small>Du <t t-esc="doc.date_from.strftime('%d/%m/%Y') if doc.date_from else '–'"/>
+                            au <t t-esc="doc.date_to.strftime('%d/%m/%Y')"/></small>
+                        </h2>
+                        <t t-call="pfe.tmpl_fs_header"/>
+                        <t t-set="lines" t-value="doc._get_flux_lines()"/>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Désignation</th>
+                                    <th class="text-end" style="width:20%">Montant (MAD)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="lines" t-as="line">
+                                    <tr t-att-class="'table-light fw-bold' if line.get('is_total') else ''">
+                                        <td t-att-style="'padding-left:%spx' % (8 + line.get('level',1)*14)"
+                                            t-att-class="'fw-bold' if line.get('bold') else ''">
+                                            <t t-esc="line['name']"/>
+                                        </td>
+                                        <td class="text-end"
+                                            t-att-class="'text-danger' if line.get('amount',0) &lt; 0 else ''">
+                                            <t t-esc="'{:,.2f}'.format(line.get('amount', 0))"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_flux" model="ir.actions.report">
+        <field name="name">Tableau de Flux de Trésorerie</field>
+        <field name="model">financial.statement.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pfe.tmpl_report_flux</field>
+        <field name="report_file">pfe.tmpl_report_flux</field>
+        <field name="print_report_name">'Flux Trésorerie - ' + (object.date_to.strftime('%Y%m%d') if object.date_to else '')</field>
+    </record>
+
+    <!-- ============================================================
+         CUSTOM FINANCIAL REPORT
+    ============================================================ -->
+    <template id="tmpl_report_custom_financial">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center mb-4">
+                            <t t-esc="doc.report_id.name"/>
+                        </h2>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong><t t-esc="doc.company_id.name"/></strong>
+                            </div>
+                            <div class="col-6 text-end">
+                                Période :
+                                <strong>
+                                    <t t-esc="doc.date_from.strftime('%d/%m/%Y') if doc.date_from else '–'"/>
+                                    –
+                                    <t t-esc="doc.date_to.strftime('%d/%m/%Y')"/>
+                                </strong>
+                            </div>
+                        </div>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Désignation</th>
+                                    <th class="text-end" style="width:20%">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="doc.result_ids" t-as="line">
+                                    <tr t-att-class="'table-light fw-bold' if line.is_total else ''">
+                                        <td t-att-style="'padding-left:%spx' % (8 + line.level*14)"
+                                            t-att-class="'fw-bold' if line.bold else ''">
+                                            <t t-esc="line.name"/>
+                                        </td>
+                                        <td class="text-end"
+                                            t-att-class="'text-danger' if line.amount &lt; 0 else ''">
+                                            <t t-if="line.has_amount">
+                                                <t t-esc="'{:,.2f}'.format(line.amount)"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_custom_financial" model="ir.actions.report">
+        <field name="name">État Financier Personnalisé</field>
+        <field name="model">custom.report.result.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pfe.tmpl_report_custom_financial</field>
+        <field name="report_file">pfe.tmpl_report_custom_financial</field>
+        <field name="print_report_name">object.report_id.name + ' - ' + (object.date_to.strftime('%Y%m%d') if object.date_to else '')</field>
+    </record>
+
+</odoo>

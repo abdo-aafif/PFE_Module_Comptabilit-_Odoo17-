@@ -17,9 +17,9 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.5.0',
+    'version': '17.0.1.8.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base (Balance, Grand Livre, Balance Âgée, Journal Centralisateur)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Immobilisations + Clôture Comptable + États Financiers (Bilan, CPC, Flux, Report Builder)',
     'description': """
 Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
@@ -63,6 +63,24 @@ Section 3.1.6 du CDC : Reporting de Base
   • Grand livre (écritures détaillées + solde progressif par compte)
   • Balance âgée clients / fournisseurs (échéancier 0-30 / 30-60 / 60-90 / +90 jours)
   • Journal centralisateur (totaux Débit/Crédit par journal)
+
+Section 3.2.2 du CDC : Gestion des Immobilisations
+  • Fiche immobilisation (acquisition, mise en service) + catégories paramétrables
+  • Calcul automatique des amortissements : linéaire et dégressif (CGI marocain, prorata temporis)
+  • Tableau d'amortissement (vue + impression PDF) avec basculement dégressif→linéaire
+  • Cession / mise au rebut avec génération automatique de l'écriture de sortie (plus/moins-value)
+
+Section 3.2.3 du CDC : Clôture Comptable
+  • Processus de clôture mensuelle / annuelle (assistant guidé en 3 étapes)
+  • Contrôles de cohérence pré-clôture (balance équilibrée, aucun brouillon, amortissements, rapprochement)
+  • Verrouillage des périodes (period_lock_date / fiscalyear_lock_date) + déverrouillage Manager
+  • Génération automatique des écritures d'à-nouveaux (report bilan 1-5, résultat 119100/119900)
+
+Section 3.2.1 du CDC : États Financiers
+  • Bilan (Actif / Passif) — modèle CGNC marocain, valeurs nettes, impression PDF
+  • Compte de Produits et Charges (CPC) — 7 rubriques, résultat net
+  • Tableau de Flux de Trésorerie (méthode indirecte : exploitation / investissement / financement)
+  • États financiers personnalisables (report builder : lignes par préfixes de comptes + formules)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -110,6 +128,15 @@ Section 3.1.6 du CDC : Reporting de Base
         'views/account_tva_declaration_views.xml',
         # 3.1.6 Reporting de Base (Balance, Grand Livre, Balance Âgée, Centralisateur)
         'views/compta_custom_reports_views.xml',
+        # 3.2.2 Gestion des Immobilisations (fiches, amortissements, cession/rebut)
+        'views/account_asset_views.xml',
+        'reports/asset_report.xml',
+        'wizard/asset_disposal_wizard_views.xml',
+        # 3.2.3 Clôture Comptable (séquences, historique, wizard de clôture)
+        'views/account_period_close_views.xml',
+        # 3.2.1 États Financiers (Bilan / CPC / Flux + report builder)
+        'views/financial_statements_views.xml',
+        'reports/financial_statements_report.xml',
         'views/menus.xml',
     ],
 

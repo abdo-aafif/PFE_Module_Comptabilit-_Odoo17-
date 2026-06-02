@@ -2,16 +2,16 @@ from odoo import models, fields, tools
 
 
 class ComptaBalanceGenerale(models.Model):
-    _name = 'compta.balance.generale'
-    _description = 'Balance Générale (Vue SQL)'
+    _name = "compta.balance.generale"
+    _description = "Balance Générale (Vue SQL)"
     _auto = False
 
-    account_id = fields.Many2one('account.account', string='Compte')
-    company_id = fields.Many2one('res.company', string='Société')
-    debit = fields.Monetary('Débit', currency_field='currency_id')
-    credit = fields.Monetary('Crédit', currency_field='currency_id')
-    balance = fields.Monetary('Solde', currency_field='currency_id')
-    currency_id = fields.Many2one('res.currency')
+    account_id = fields.Many2one("account.account", string="Compte")
+    company_id = fields.Many2one("res.company", string="Société")
+    debit = fields.Monetary("Débit", currency_field="currency_id")
+    credit = fields.Monetary("Crédit", currency_field="currency_id")
+    balance = fields.Monetary("Solde", currency_field="currency_id")
+    currency_id = fields.Many2one("res.currency")
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -34,24 +34,24 @@ class ComptaBalanceGenerale(models.Model):
 
 
 class ComptaGrandLivre(models.Model):
-    _name = 'compta.grand.livre'
-    _description = 'Grand Livre (Vue SQL)'
+    _name = "compta.grand.livre"
+    _description = "Grand Livre (Vue SQL)"
     _auto = False
-    _order = 'account_id, date, id'
+    _order = "account_id, date, id"
 
-    account_id = fields.Many2one('account.account', string='Compte')
-    move_id = fields.Many2one('account.move', string='Pièce')
-    move_name = fields.Char(string='N° Pièce')
-    journal_id = fields.Many2one('account.journal', string='Journal')
-    partner_id = fields.Many2one('res.partner', string='Partenaire')
-    date = fields.Date(string='Date')
-    label = fields.Char(string='Libellé')
-    ref = fields.Char(string='Référence')
-    company_id = fields.Many2one('res.company', string='Société')
-    debit = fields.Monetary('Débit', currency_field='currency_id')
-    credit = fields.Monetary('Crédit', currency_field='currency_id')
-    balance = fields.Monetary('Solde Progressif', currency_field='currency_id')
-    currency_id = fields.Many2one('res.currency')
+    account_id = fields.Many2one("account.account", string="Compte")
+    move_id = fields.Many2one("account.move", string="Pièce")
+    move_name = fields.Char(string="N° Pièce")
+    journal_id = fields.Many2one("account.journal", string="Journal")
+    partner_id = fields.Many2one("res.partner", string="Partenaire")
+    date = fields.Date(string="Date")
+    label = fields.Char(string="Libellé")
+    ref = fields.Char(string="Référence")
+    company_id = fields.Many2one("res.company", string="Société")
+    debit = fields.Monetary("Débit", currency_field="currency_id")
+    credit = fields.Monetary("Crédit", currency_field="currency_id")
+    balance = fields.Monetary("Solde Progressif", currency_field="currency_id")
+    currency_id = fields.Many2one("res.currency")
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -84,15 +84,15 @@ class ComptaGrandLivre(models.Model):
 
 
 class ComptaJournalCentralisateur(models.Model):
-    _name = 'compta.journal.centralisateur'
-    _description = 'Journal Centralisateur (Vue SQL)'
+    _name = "compta.journal.centralisateur"
+    _description = "Journal Centralisateur (Vue SQL)"
     _auto = False
 
-    journal_id = fields.Many2one('account.journal', string='Journal')
-    company_id = fields.Many2one('res.company', string='Société')
-    debit = fields.Monetary('Total Débit', currency_field='currency_id')
-    credit = fields.Monetary('Total Crédit', currency_field='currency_id')
-    currency_id = fields.Many2one('res.currency')
+    journal_id = fields.Many2one("account.journal", string="Journal")
+    company_id = fields.Many2one("res.company", string="Société")
+    debit = fields.Monetary("Total Débit", currency_field="currency_id")
+    credit = fields.Monetary("Total Crédit", currency_field="currency_id")
+    currency_id = fields.Many2one("res.currency")
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -123,21 +123,21 @@ class ComptaJournalCentralisateur(models.Model):
 
 
 class ComptaBalanceAgee(models.Model):
-    _name = 'compta.balance.agee'
-    _description = 'Balance Agee (Vue SQL)'
+    _name = "compta.balance.agee"
+    _description = "Balance Agee (Vue SQL)"
     _auto = False
 
-    partner_id = fields.Many2one('res.partner', string='Partenaire')
-    account_type = fields.Selection(related='account_id.account_type', string='Type de Compte')
-    account_id = fields.Many2one('account.account')
-    company_id = fields.Many2one('res.company', string='Société')
+    partner_id = fields.Many2one("res.partner", string="Partenaire")
+    account_type = fields.Selection(related="account_id.account_type", string="Type de Compte")
+    account_id = fields.Many2one("account.account")
+    company_id = fields.Many2one("res.company", string="Société")
 
-    jour_0_30 = fields.Monetary('0-30 jours', currency_field='currency_id')
-    jour_30_60 = fields.Monetary('30-60 jours', currency_field='currency_id')
-    jour_60_90 = fields.Monetary('60-90 jours', currency_field='currency_id')
-    jour_plus_90 = fields.Monetary('+90 jours', currency_field='currency_id')
-    total = fields.Monetary('Total', currency_field='currency_id')
-    currency_id = fields.Many2one('res.currency')
+    jour_0_30 = fields.Monetary("0-30 jours", currency_field="currency_id")
+    jour_30_60 = fields.Monetary("30-60 jours", currency_field="currency_id")
+    jour_60_90 = fields.Monetary("60-90 jours", currency_field="currency_id")
+    jour_plus_90 = fields.Monetary("+90 jours", currency_field="currency_id")
+    total = fields.Monetary("Total", currency_field="currency_id")
+    currency_id = fields.Many2one("res.currency")
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)

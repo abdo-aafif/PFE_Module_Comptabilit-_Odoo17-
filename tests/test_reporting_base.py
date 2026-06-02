@@ -29,92 +29,125 @@ class _ReportsCommon(TransactionCase):
         Account = cls.env["account.account"]
         Journal = cls.env["account.journal"]
 
-        cls.account_charge = Account.create({
-            "code": "TR6CHG",
-            "name": "Test Charge 3.1.6",
-            "account_type": "expense",
-            "company_id": cls.company.id,
-        })
-        cls.account_produit = Account.create({
-            "code": "TR6PDT",
-            "name": "Test Produit 3.1.6",
-            "account_type": "income",
-            "company_id": cls.company.id,
-        })
-        cls.account_client = Account.create({
-            "code": "TR6CLI",
-            "name": "Test Client 3.1.6",
-            "account_type": "asset_receivable",
-            "reconcile": True,
-            "company_id": cls.company.id,
-        })
-        cls.account_fourn = Account.create({
-            "code": "TR6FRN",
-            "name": "Test Fourn 3.1.6",
-            "account_type": "liability_payable",
-            "reconcile": True,
-            "company_id": cls.company.id,
-        })
+        cls.account_charge = Account.create(
+            {
+                "code": "TR6CHG",
+                "name": "Test Charge 3.1.6",
+                "account_type": "expense",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.account_produit = Account.create(
+            {
+                "code": "TR6PDT",
+                "name": "Test Produit 3.1.6",
+                "account_type": "income",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.account_client = Account.create(
+            {
+                "code": "TR6CLI",
+                "name": "Test Client 3.1.6",
+                "account_type": "asset_receivable",
+                "reconcile": True,
+                "company_id": cls.company.id,
+            }
+        )
+        cls.account_fourn = Account.create(
+            {
+                "code": "TR6FRN",
+                "name": "Test Fourn 3.1.6",
+                "account_type": "liability_payable",
+                "reconcile": True,
+                "company_id": cls.company.id,
+            }
+        )
 
-        cls.journal_general = Journal.create({
-            "name": "Test OD 3.1.6",
-            "code": "TR6",
-            "type": "general",
-            "company_id": cls.company.id,
-        })
-        cls.journal_vente = Journal.create({
-            "name": "Test Vente 3.1.6",
-            "code": "TR6V",
-            "type": "sale",
-            "company_id": cls.company.id,
-        })
-        cls.journal_achat = Journal.create({
-            "name": "Test Achat 3.1.6",
-            "code": "TR6A",
-            "type": "purchase",
-            "company_id": cls.company.id,
-        })
+        cls.journal_general = Journal.create(
+            {
+                "name": "Test OD 3.1.6",
+                "code": "TR6",
+                "type": "general",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.journal_vente = Journal.create(
+            {
+                "name": "Test Vente 3.1.6",
+                "code": "TR6V",
+                "type": "sale",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.journal_achat = Journal.create(
+            {
+                "name": "Test Achat 3.1.6",
+                "code": "TR6A",
+                "type": "purchase",
+                "company_id": cls.company.id,
+            }
+        )
 
-        cls.partner = cls.env["res.partner"].create({
-            "name": "Partner Test 3.1.6",
-            "property_account_receivable_id": cls.account_client.id,
-            "property_account_payable_id": cls.account_fourn.id,
-        })
+        cls.partner = cls.env["res.partner"].create(
+            {
+                "name": "Partner Test 3.1.6",
+                "property_account_receivable_id": cls.account_client.id,
+                "property_account_payable_id": cls.account_fourn.id,
+            }
+        )
 
     # ── Helpers ──────────────────────────────────────────────────────────
-    def _make_entry(self, amount=1000.0, account_debit=None, account_credit=None,
-                    journal=None, entry_date=None, post=True, ref="OD test 3.1.6"):
+    def _make_entry(
+        self,
+        amount=1000.0,
+        account_debit=None,
+        account_credit=None,
+        journal=None,
+        entry_date=None,
+        post=True,
+        ref="OD test 3.1.6",
+    ):
         """Crée une écriture équilibrée 1 ligne débit / 1 ligne crédit."""
         account_debit = account_debit or self.account_charge
         account_credit = account_credit or self.account_fourn
         journal = journal or self.journal_general
         entry_date = entry_date or date(2030, 6, 1)
-        move = self.env["account.move"].create({
-            "move_type": "entry",
-            "journal_id": journal.id,
-            "date": entry_date,
-            "ref": ref,
-            "line_ids": [
-                (0, 0, {
-                    "account_id": account_debit.id,
-                    "name": "D",
-                    "debit": amount,
-                    "credit": 0.0,
-                }),
-                (0, 0, {
-                    "account_id": account_credit.id,
-                    "name": "C",
-                    "debit": 0.0,
-                    "credit": amount,
-                }),
-            ],
-        })
+        move = self.env["account.move"].create(
+            {
+                "move_type": "entry",
+                "journal_id": journal.id,
+                "date": entry_date,
+                "ref": ref,
+                "line_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "account_id": account_debit.id,
+                            "name": "D",
+                            "debit": amount,
+                            "credit": 0.0,
+                        },
+                    ),
+                    (
+                        0,
+                        0,
+                        {
+                            "account_id": account_credit.id,
+                            "name": "C",
+                            "debit": 0.0,
+                            "credit": amount,
+                        },
+                    ),
+                ],
+            }
+        )
         if post:
             move.action_post()
         return move
 
-    def _make_customer_invoice(self, amount=1000.0, invoice_date=None,
-                               invoice_date_due=None, post=True):
+    def _make_customer_invoice(self, amount=1000.0, invoice_date=None, invoice_date_due=None, post=True):
         """Crée une facture client sans taxe (HT = TTC)."""
         invoice_date = invoice_date or date(2030, 6, 15)
         vals = {
@@ -122,13 +155,19 @@ class _ReportsCommon(TransactionCase):
             "partner_id": self.partner.id,
             "journal_id": self.journal_vente.id,
             "invoice_date": invoice_date,
-            "invoice_line_ids": [(0, 0, {
-                "name": "Ligne",
-                "quantity": 1,
-                "price_unit": amount,
-                "account_id": self.account_produit.id,
-                "tax_ids": [(5, 0, 0)],
-            })],
+            "invoice_line_ids": [
+                (
+                    0,
+                    0,
+                    {
+                        "name": "Ligne",
+                        "quantity": 1,
+                        "price_unit": amount,
+                        "account_id": self.account_produit.id,
+                        "tax_ids": [(5, 0, 0)],
+                    },
+                )
+            ],
         }
         if invoice_date_due:
             vals["invoice_date_due"] = invoice_date_due
@@ -137,8 +176,7 @@ class _ReportsCommon(TransactionCase):
             invoice.action_post()
         return invoice
 
-    def _make_vendor_bill(self, amount=1000.0, invoice_date=None,
-                          invoice_date_due=None, post=True):
+    def _make_vendor_bill(self, amount=1000.0, invoice_date=None, invoice_date_due=None, post=True):
         """Crée une facture fournisseur sans taxe."""
         invoice_date = invoice_date or date(2030, 6, 15)
         vals = {
@@ -147,13 +185,19 @@ class _ReportsCommon(TransactionCase):
             "journal_id": self.journal_achat.id,
             "invoice_date": invoice_date,
             "ref": f"BILL-{invoice_date.isoformat()}",
-            "invoice_line_ids": [(0, 0, {
-                "name": "Ligne",
-                "quantity": 1,
-                "price_unit": amount,
-                "account_id": self.account_charge.id,
-                "tax_ids": [(5, 0, 0)],
-            })],
+            "invoice_line_ids": [
+                (
+                    0,
+                    0,
+                    {
+                        "name": "Ligne",
+                        "quantity": 1,
+                        "price_unit": amount,
+                        "account_id": self.account_charge.id,
+                        "tax_ids": [(5, 0, 0)],
+                    },
+                )
+            ],
         }
         if invoice_date_due:
             vals["invoice_date_due"] = invoice_date_due
@@ -171,10 +215,13 @@ class TestBalanceGenerale(_ReportsCommon):
     """Vue ``compta.balance.generale`` : Débit / Crédit / Solde par compte."""
 
     def _balance(self, account):
-        return self.env["compta.balance.generale"].search([
-            ("account_id", "=", account.id),
-            ("company_id", "=", self.company.id),
-        ], limit=1)
+        return self.env["compta.balance.generale"].search(
+            [
+                ("account_id", "=", account.id),
+                ("company_id", "=", self.company.id),
+            ],
+            limit=1,
+        )
 
     def test_compte_debite_apparait(self):
         """Écriture validée ⇒ compte débité présent dans la balance."""
@@ -231,18 +278,23 @@ class TestGrandLivre(_ReportsCommon):
     """Vue ``compta.grand.livre`` : 1 ligne par écriture, solde progressif."""
 
     def _lignes(self, account):
-        return self.env["compta.grand.livre"].search([
-            ("account_id", "=", account.id),
-            ("company_id", "=", self.company.id),
-        ], order="date, id")
+        return self.env["compta.grand.livre"].search(
+            [
+                ("account_id", "=", account.id),
+                ("company_id", "=", self.company.id),
+            ],
+            order="date, id",
+        )
 
     def test_une_ligne_par_ecriture(self):
         """1 OD (2 lignes) ⇒ 2 lignes au grand livre (1 par compte)."""
         self._make_entry(amount=1000.0)
-        lignes = self.env["compta.grand.livre"].search([
-            ("account_id", "in", [self.account_charge.id, self.account_fourn.id]),
-            ("company_id", "=", self.company.id),
-        ])
+        lignes = self.env["compta.grand.livre"].search(
+            [
+                ("account_id", "in", [self.account_charge.id, self.account_fourn.id]),
+                ("company_id", "=", self.company.id),
+            ]
+        )
         self.assertEqual(len(lignes), 2)
 
     def test_champs_remplis(self):
@@ -283,11 +335,13 @@ class TestBalanceAgee(_ReportsCommon):
     """Vue ``compta.balance.agee`` : ventilation 0-30 / 30-60 / 60-90 / +90."""
 
     def _lignes(self, account_type="asset_receivable"):
-        return self.env["compta.balance.agee"].search([
-            ("partner_id", "=", self.partner.id),
-            ("account_type", "=", account_type),
-            ("company_id", "=", self.company.id),
-        ])
+        return self.env["compta.balance.agee"].search(
+            [
+                ("partner_id", "=", self.partner.id),
+                ("account_type", "=", account_type),
+                ("company_id", "=", self.company.id),
+            ]
+        )
 
     def test_facture_non_payee_apparait(self):
         """Facture client non lettrée ⇒ ligne dans la balance âgée."""
@@ -353,24 +407,27 @@ class TestBalanceAgee(_ReportsCommon):
         """Total = somme des 4 tranches (vérification d'invariant)."""
         today = date.today()
         self._make_customer_invoice(
-            amount=100.0, invoice_date=today - timedelta(days=15),
+            amount=100.0,
+            invoice_date=today - timedelta(days=15),
             invoice_date_due=today - timedelta(days=15),
         )
         self._make_customer_invoice(
-            amount=200.0, invoice_date=today - timedelta(days=60),
+            amount=200.0,
+            invoice_date=today - timedelta(days=60),
             invoice_date_due=today - timedelta(days=45),
         )
         self._make_customer_invoice(
-            amount=300.0, invoice_date=today - timedelta(days=90),
+            amount=300.0,
+            invoice_date=today - timedelta(days=90),
             invoice_date_due=today - timedelta(days=75),
         )
         self._make_customer_invoice(
-            amount=400.0, invoice_date=today - timedelta(days=130),
+            amount=400.0,
+            invoice_date=today - timedelta(days=130),
             invoice_date_due=today - timedelta(days=120),
         )
         ligne = self._lignes("asset_receivable")
-        somme = (ligne.jour_0_30 + ligne.jour_30_60
-                 + ligne.jour_60_90 + ligne.jour_plus_90)
+        somme = ligne.jour_0_30 + ligne.jour_30_60 + ligne.jour_60_90 + ligne.jour_plus_90
         self.assertAlmostEqual(somme, ligne.total, places=2)
         self.assertAlmostEqual(ligne.total, 1000.0, places=2)
 
@@ -411,10 +468,13 @@ class TestJournalCentralisateur(_ReportsCommon):
     """Vue ``compta.journal.centralisateur`` : Débit/Crédit par journal."""
 
     def _ligne(self, journal):
-        return self.env["compta.journal.centralisateur"].search([
-            ("journal_id", "=", journal.id),
-            ("company_id", "=", self.company.id),
-        ], limit=1)
+        return self.env["compta.journal.centralisateur"].search(
+            [
+                ("journal_id", "=", journal.id),
+                ("company_id", "=", self.company.id),
+            ],
+            limit=1,
+        )
 
     def test_aggregation_par_journal(self):
         """N écritures dans le même journal ⇒ ligne unique avec total."""
