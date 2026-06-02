@@ -115,6 +115,14 @@
               action="account.action_tax_form"
               sequence="3"/>
 
+    <!-- AJOUT 3.1.5 : Accès rapide aux paramètres de la comptabilité
+         (Régime TVA mensuel / trimestriel défini sur la société) -->
+    <menuitem id="menu_compta_parametres"
+              name="Paramètres (Régime TVA, etc.)"
+              parent="menu_compta_configuration"
+              action="account.action_account_config"
+              sequence="5"/>
+
     <!-- ── COMPTABILITÉ ANALYTIQUE (3.1.1 CDC) ──────────────────────
          3 niveaux exposés :
          1. Comptes Analytiques  : les "projets" / centres de coût
@@ -183,5 +191,29 @@
               parent="menu_compta_banque"
               action="account.action_account_reconcile_model"
               sequence="5"/>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.1.5 — DÉCLARATIONS FISCALES (Menus)
+           • TVA : déclaration mensuelle / trimestrielle
+           • Calcul automatique (collectée, déductible, à payer)
+           • Taux TVA marocains (20%, 14%, 10%, 7%, 0%) — fournis par l10n_ma
+           • Export pour télédéclaration (SIMPL-TVA DGI)
+         ══════════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_compta_fiscal"
+              name="Déclarations Fiscales"
+              parent="menu_comptabilite_maroc_root"
+              sequence="6"/>
+
+    <menuitem id="menu_compta_fiscal_tva_dashboard"
+              name="Historique &amp; Calcul TVA (Encaissements)"
+              parent="menu_compta_fiscal"
+              action="action_account_tva_declaration"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_fiscal_tva_xml"
+              name="Export XML (SIMPL-TVA DGI)"
+              parent="menu_compta_fiscal"
+              action="action_simpl_tva_wizard"
+              sequence="2"/>
 
 </odoo>

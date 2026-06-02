@@ -2,3 +2,7 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_account_recurring_user,account.recurring.user,model_account_recurring,,1,1,1,1
 access_bank_statement_import_wizard,bank.statement.import.wizard,model_bank_statement_import_wizard,,1,1,1,1
 access_bank_reconciliation_wizard,bank.reconciliation.wizard,model_bank_reconciliation_wizard,,1,1,1,1
+access_simpl_tva_wizard,simpl.tva.wizard,model_simpl_tva_wizard,,1,1,1,1
+access_account_tva_declaration,account.tva.declaration,model_account_tva_declaration,,1,1,1,1
+access_account_tva_declaration_line,account.tva.declaration.line,model_account_tva_declaration_line,,1,1,1,1
+access_account_tva_declaration_detail,account.tva.declaration.detail,model_account_tva_declaration_detail,,1,1,1,1

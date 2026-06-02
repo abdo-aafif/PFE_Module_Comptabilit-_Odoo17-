@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vue Liste : Historique des déclarations -->
+    <record id="view_account_tva_declaration_tree" model="ir.ui.view">
+        <field name="name">account.tva.declaration.tree</field>
+        <field name="model">account.tva.declaration</field>
+        <field name="arch" type="xml">
+            <tree string="Historique des Déclarations">
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="tva_a_payer"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'done'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue Formulaire : Tableau de bord de synthèse -->
+    <record id="view_account_tva_declaration_form" model="ir.ui.view">
+        <field name="name">account.tva.declaration.form</field>
+        <field name="model">account.tva.declaration</field>
+        <field name="arch" type="xml">
+            <form string="Déclaration TVA">
+                <header>
+                    <button name="action_compute_tva" string="Calculer la TVA (selon Encaissement)" type="object"
+                            class="btn-primary" invisible="state != 'draft'" icon="fa-calculator"/>
+                    <button name="action_validate" string="Valider la déclaration" type="object" class="btn-success" invisible="state != 'draft'"/>
+                    <button name="action_draft" string="Remettre en brouillon" type="object" invisible="state != 'done'"/>
+                    <button name="action_export_simpl_tva" string="Export pour télédéclaration (SIMPL-TVA)" type="object"
+                            class="btn-info" invisible="state != 'done'" icon="fa-file-code-o"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_details" type="object" class="oe_stat_button" icon="fa-search-plus"
+                                invisible="detail_count == 0">
+                            <field name="detail_count" widget="statinfo" string="Pièces incluses"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <span class="text-muted">Régime déclaré : <field name="tva_regime" readonly="1"/></span>
+                    </div>
+                    <group>
+                        <group string="Sélection de la Période">
+                            <div colspan="2" class="alert alert-info" role="alert" style="margin-bottom: 10px;">
+                                Régime actuel : <strong><field name="tva_regime" readonly="1"/></strong>.
+                                <br/>
+                                <small>Pour passer en mode Trimestriel ou Mensuel, allez dans "Configuration > Paramètres".</small>
+                            </div>
+                            
+                            <field name="periode_annee" readonly="state == 'done'"/>
+                            
+                            <!-- Sélecteur Mensuel (visible uniquement si mensuel) -->
+                            <field name="periode_mois" readonly="state == 'done'"
+                                   invisible="tva_regime != 'mensuel'"
+                                   required="tva_regime == 'mensuel'"/>
+
+                            <!-- Sélecteur Trimestriel (visible uniquement si trimestriel) -->
+                            <field name="periode_trimestre" readonly="state == 'done'"
+                                   invisible="tva_regime != 'trimestriel'"
+                                   required="tva_regime == 'trimestriel'"/>
+                                   
+                            <!-- Dates techniques calculées automatiquement -->
+                            <field name="date_start" invisible="1"/>
+                            <field name="date_end" invisible="1"/>
+                        </group>
+                        <group string="Synthèse à Payer" class="oe_subtotal_footer oe_right">
+                            <field name="tva_collectee" widget="monetary" style="color: red; font-weight: bold;"/>
+                            <field name="tva_deductible" widget="monetary" style="color: green; font-weight: bold;"/>
+                            <div class="oe_subtotal_footer_separator oe_inline o_td_label">
+                                <label for="tva_a_payer"/>
+                            </div>
+                            <field name="tva_a_payer" nolabel="1" class="oe_subtotal_footer_separator" widget="monetary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Détail et Ventilation par Taux">
+                            <field name="line_ids" readonly="1">
+                                <tree decoration-info="type_tva == 'collectee'" decoration-success="type_tva == 'deductible'" create="false" edit="false" delete="false">
+                                    <field name="type_tva"/>
+                                    <field name="taux" string="Taux appliqué (%)" widget="float" digits="[16,2]"/>
+                                    <field name="montant_tva" string="Montant TVA" widget="float" digits="[16,2]"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Détail des Pièces Incluses">
+                            <field name="detail_ids" readonly="1">
+                                <tree decoration-info="type_tva == 'collectee'" decoration-success="type_tva == 'deductible'" create="false" edit="false" delete="false">
+                                    <field name="invoice_date"/>
+                                    <field name="move_name"/>
+                                    <field name="partner_id"/>
+                                    <field name="move_type"/>
+                                    <field name="type_tva"/>
+                                    <field name="taux" string="Taux (%)" widget="float" digits="[5,2]"/>
+                                    <field name="amount_total_company" string="Total facture" widget="float" digits="[16,2]"/>
+                                    <field name="amount_paid_period" string="Encaissé période" widget="float" digits="[16,2]"/>
+                                    <field name="proportion" widget="percentage"/>
+                                    <field name="tva_amount" string="TVA imputée" widget="float" digits="[16,2]"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Export pour Télédéclaration (SIMPL-TVA)">
+                            <div class="alert alert-info" role="alert">
+                                Cette fonctionnalité génère le fichier XML structuré (Relevé des Déductions)
+                                attendu par la <strong>Direction Générale des Impôts (DGI)</strong> sur la
+                                plateforme <strong>SIMPL-TVA</strong>.
+                                <br/>
+                                Le fichier est construit à partir des pièces calculées selon
+                                l'<em>encaissement</em> pour la période sélectionnée.
+                                <br/>
+                                <small>
+                                    <strong>Étapes :</strong> 1) Calculez la TVA — 2) Cliquez sur
+                                    « Export pour télédéclaration (SIMPL-TVA) » dans l'en-tête —
+                                    3) Téléchargez le fichier ci-dessous et déposez-le sur le portail SIMPL.
+                                </small>
+                            </div>
+                            <group>
+                                <group string="Fichier généré">
+                                    <field name="edi_generated_on" readonly="1"/>
+                                    <field name="edi_file_name" invisible="1"/>
+                                    <label for="edi_file_data" string="Télécharger le fichier XML"
+                                           invisible="not edi_file_data"/>
+                                    <field name="edi_file_data" filename="edi_file_name" widget="binary"
+                                           readonly="1" invisible="not edi_file_data"/>
+                                    <div colspan="2" class="text-muted" invisible="edi_file_data">
+                                        <em>Aucun fichier généré pour le moment. Cliquez sur le bouton
+                                        « Export pour télédéclaration (SIMPL-TVA) » en haut de l'écran.</em>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue Héritée : Réglages de la Société pour le régime -->
+    <record id="res_config_settings_view_form_tva_regime" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.tva</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='invoicing_settings']" position="after">
+                <h2>Réglementation Marocaine (TVA)</h2>
+                <div class="row mt16 o_settings_container" id="tva_maroc_setting">
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="o_setting_left_pane"/>
+                        <div class="o_setting_right_pane">
+                            <label for="tva_regime" string="Périodicité de Déclaration de TVA"/>
+                            <div class="text-muted">
+                                Choisissez si votre entreprise déclare la TVA tous les mois ou tous les trimestres.
+                            </div>
+                            <field name="tva_regime" class="oe_inline"/>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_account_tva_declaration" model="ir.actions.act_window">
+        <field name="name">Déclarations de TVA</field>
+        <field name="res_model">account.tva.declaration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Générez votre première déclaration de TVA !
+          </p>
+        </field>
+    </record>
+</odoo>

@@ -30,5 +30,30 @@
         <record id="account.group_account_user" model="res.groups">
             <field name="implied_ids" eval="[(4, ref('analytic.group_analytic_accounting'))]"/>
         </record>
+
+        <!-- ================================================================
+             Section 3.1.5 du CDC : Déclarations Fiscales (TVA)
+             Règles multi-sociétés pour isoler les déclarations par société.
+             ================================================================ -->
+        <record id="rule_account_tva_declaration_company" model="ir.rule">
+            <field name="name">Déclaration TVA : accès par société</field>
+            <field name="model_id" ref="model_account_tva_declaration"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_account_tva_declaration_line_company" model="ir.rule">
+            <field name="name">Ligne ventilation TVA : accès par société</field>
+            <field name="model_id" ref="model_account_tva_declaration_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_account_tva_declaration_detail_company" model="ir.rule">
+            <field name="name">Détail audit TVA : accès par société</field>
+            <field name="model_id" ref="model_account_tva_declaration_detail"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
     </data>
 </odoo>

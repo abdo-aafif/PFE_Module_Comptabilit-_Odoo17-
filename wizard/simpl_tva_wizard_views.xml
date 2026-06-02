@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_simpl_tva_wizard_form" model="ir.ui.view">
+        <field name="name">simpl.tva.wizard.form</field>
+        <field name="model">simpl.tva.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Générer EDI SIMPL-TVA">
+                <field name="state" invisible="1"/>
+                
+                <group invisible="state == 'done'">
+                    <p colspan="2" class="text-muted">
+                        Cet assistant va examiner vos écritures comptables contenant de la TVA et générer le fichier XML structuré exigé par la Direction Générale des Impôts (DGI) marocaine sur sa plateforme SIMPL-TVA.
+                    </p>
+                    <group>
+                        <field name="date_start"/>
+                        <field name="date_end"/>
+                    </group>
+                </group>
+
+                <group invisible="state == 'draft'">
+                    <field name="file_name" invisible="1"/>
+                    <label for="file_data" string="Télécharger"/>
+                    <div>
+                        <field name="file_data" filename="file_name" readonly="1" widget="binary"/>
+                    </div>
+                    <p class="text-success mt-2">
+                        Fichier généré avec succès ! Cliquez sur le lien ci-dessus pour le récupérer.
+                    </p>
+                </group>
+
+                <footer>
+                    <button string="Générer l'XML" name="generate_xml" type="object" class="btn-primary" invisible="state == 'done'"/>
+                    <button string="Fermer" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_simpl_tva_wizard" model="ir.actions.act_window">
+        <field name="name">Générer Télédéclaration (SIMPL-TVA)</field>
+        <field name="res_model">simpl.tva.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
