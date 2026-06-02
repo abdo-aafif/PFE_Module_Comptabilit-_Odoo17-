@@ -34,3 +34,4 @@ Ou tous les tests post-installation du module ::
 from . import test_plan_comptable
 from . import test_ecritures_comptables
 from . import test_journaux_comptables
+from . import test_bank_gestion

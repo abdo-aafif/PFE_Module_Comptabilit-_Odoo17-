@@ -26,6 +26,7 @@ priorité donnée au plan principal. Il sert de pivot pour :
 
 Conformité au CDC : section 3.1.1 (Plan Comptable / Comptabilité analytique).
 """
+
 from odoo import models, fields, api
 
 
@@ -38,26 +39,26 @@ class AccountAnalyticLine(models.Model):
     confondus.
     """
 
-    _inherit = 'account.analytic.line'
+    _inherit = "account.analytic.line"
 
     # -------------------------------------------------------------------------
     # Champs
     # -------------------------------------------------------------------------
     compta_account_id = fields.Many2one(
-        'account.analytic.account',
-        string='Compte Analytique',
-        compute='_compute_compta_account_id',
-        store=True,   # Stocké : requis pour le groupement SQL et le tri natif
-        index=True,   # Indexé : accélère les filtres et group_by dans le reporting
+        "account.analytic.account",
+        string="Compte Analytique",
+        compute="_compute_compta_account_id",
+        store=True,  # Stocké : requis pour le groupement SQL et le tri natif
+        index=True,  # Indexé : accélère les filtres et group_by dans le reporting
         help="Compte analytique de la ligne, tous plans confondus "
-             "(Projets, Départements, Internal, ...). Utilisé pour "
-             "le groupement unifié dans le Suivi Analytique.",
+        "(Projets, Départements, Internal, ...). Utilisé pour "
+        "le groupement unifié dans le Suivi Analytique.",
     )
 
     # -------------------------------------------------------------------------
     # Méthodes calculées (@api.depends)
     # -------------------------------------------------------------------------
-    @api.depends('account_id')
+    @api.depends("account_id")
     def _compute_compta_account_id(self):
         """Calcule le compte analytique unifié, tous plans confondus.
 
@@ -87,7 +88,7 @@ class AccountAnalyticLine(models.Model):
         """
         # Récupère le plan principal (« Projects ») et la liste des autres plans
         # dans l'ordre déterministe défini par le module ``analytic``.
-        project_plan, other_plans = self.env['account.analytic.plan']._get_all_plans()
+        project_plan, other_plans = self.env["account.analytic.plan"]._get_all_plans()
 
         # Pré-calcule les noms de colonnes SQL associés à chaque plan
         # (ex. ``account_id``, ``x_plan2_dep_id``, …) afin d'éviter de

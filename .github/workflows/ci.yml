@@ -35,13 +35,34 @@ jobs:
           pip install --upgrade pip
           pip install "pylint-odoo>=9.0" flake8 black isort
 
-      - name: Run pylint-odoo
-        continue-on-error: true
+      # ─── pylint-odoo : strategie 2 niveaux ──────────────────────────────
+      # Niveau 1 (BLOQUANT) : uniquement les erreurs critiques
+      #   • E : erreurs Python (import manquant, nom non defini, etc.)
+      #   • F : erreurs fatales (syntaxe cassee, fichier illisible)
+      #   • odoolint : checks Odoo specifiques (sql-injection, manifest-required-keys,
+      #                attribute-deprecated, license-allowed, etc.)
+      # Niveau 2 (INFORMATIF) : rapport complet (style, conventions, refactor)
+      - name: Run pylint-odoo (errors only - BLOCKING)
         run: |
           pylint --rcfile=.pylintrc \
                  --load-plugins=pylint_odoo \
                  --valid-odoo-versions=${{ env.ODOO_VERSION }} \
-                 models/ wizard/ tests/ || true
+                 --disable=all \
+                 --enable=E,F,odoolint \
+                 --disable=import-error,W \
+                 models/ wizard/ tests/
+
+      - name: Run pylint-odoo (full report - advisory)
+        continue-on-error: true
+        run: |
+          # --exit-zero : ne pas faire echouer le step pour des W/C/R (pylint code 22).
+          # --disable=import-error : odoo n'est pas installe dans ce job (lint pur).
+          pylint --rcfile=.pylintrc \
+                 --load-plugins=pylint_odoo \
+                 --valid-odoo-versions=${{ env.ODOO_VERSION }} \
+                 --disable=import-error \
+                 --exit-zero \
+                 models/ wizard/ tests/
 
       - name: Run flake8
         run: |
@@ -70,11 +91,56 @@ jobs:
           print('Manifest OK:', manifest['name'], 'v' + manifest['version'])
           "
 
+      - name: Validate security CSV
+        run: |
+          python -c "
+          import csv, sys
+          REQUIRED = ['id','name','model_id:id','group_id:id','perm_read','perm_write','perm_create','perm_unlink']
+          with open('security/ir.model.access.csv') as f:
+              reader = csv.DictReader(f)
+              missing = [c for c in REQUIRED if c not in reader.fieldnames]
+              if missing:
+                  print('::error::Colonnes manquantes dans ir.model.access.csv:', missing)
+                  sys.exit(1)
+              count = 0
+              for row in reader:
+                  count += 1
+                  if not row['id']:
+                      print(f'::error::Ligne {count}: champ id vide')
+                      sys.exit(1)
+                  if not row['model_id:id']:
+                      print(f'::error::Ligne {count} ({row[\"id\"]}): model_id:id vide')
+                      sys.exit(1)
+              print(f'Security CSV OK: {count} regles ACL')
+          "
+
       - name: Validate XML files
         run: |
           sudo apt-get update -qq && sudo apt-get install -y libxml2-utils
-          find views wizard reports data security -name '*.xml' -print0 | \
+          find views wizard data security -name '*.xml' -print0 | \
             xargs -0 -I{} xmllint --noout {}
+
+      - name: Checkout Odoo RNG schema (sparse)
+        uses: actions/checkout@v4
+        with:
+          repository: odoo/odoo
+          ref: ${{ env.ODOO_VERSION }}
+          path: odoo-rng
+          sparse-checkout: |
+            odoo/import_xml.rng
+          sparse-checkout-cone-mode: false
+
+      - name: Validate XML against Odoo RNG schema
+        continue-on-error: true
+        run: |
+          RNG_PATH="odoo-rng/odoo/import_xml.rng"
+          if [ -f "$RNG_PATH" ]; then
+            find views wizard data -name '*.xml' -print0 | \
+              xargs -0 -I{} xmllint --noout --relaxng "$RNG_PATH" {} || \
+              echo "::warning::Certains XML ne respectent pas strictement le schema RNG Odoo (peut etre des faux positifs sur xpath/herites)"
+          else
+            echo "::warning::import_xml.rng introuvable a $RNG_PATH - validation RNG ignoree"
+          fi
 
   # ──────────────────────────────────────────────────────────────────────
   #  JOB 2 — TESTS Odoo (avec PostgreSQL service)
@@ -158,12 +224,28 @@ jobs:
 
       - name: Verify no test failures
         run: |
-          if grep -E "FAIL: |ERROR: |Traceback " odoo-server/odoo_test.log; then
+          LOG=odoo-server/odoo_test.log
+          if grep -E "FAIL: |ERROR: |Traceback " "$LOG"; then
             echo "::error::Test failures detected"
             exit 1
           fi
-          PASSED=$(grep -cE "ok$" odoo-server/odoo_test.log || true)
-          echo "::notice::Tests passed: $PASSED"
+          # Odoo 17 - resume final logge par odoo.modules.loading a la fin du chargement :
+          #   "X failed, Y error(s) of Z tests when loading database 'test_omega'"
+          SUMMARY=$(grep -oE "[0-9]+ failed, [0-9]+ error\(s\) of [0-9]+ tests" "$LOG" | tail -1 || true)
+          # Fallback : compter les "Starting <ClassName>.test_xxx" logges par odoo.tests.stats
+          STARTED=$(grep -cE "Starting [A-Za-z0-9_.]+\.test_[A-Za-z0-9_]+" "$LOG" || true)
+          if [ -n "$SUMMARY" ]; then
+            echo "::notice::Resume Odoo : $SUMMARY"
+            TOTAL=$(echo "$SUMMARY" | grep -oE "of [0-9]+ tests" | grep -oE "[0-9]+")
+          else
+            TOTAL=$STARTED
+            echo "::notice::Resume Odoo absent - comptage par 'Starting' : $STARTED tests"
+          fi
+          echo "::notice::Tests executes : $TOTAL"
+          if [ "${TOTAL:-0}" -eq 0 ]; then
+            echo "::error::Aucun test execute - verifier --test-tags et tests/__init__.py"
+            exit 1
+          fi
 
       - name: Coverage report
         if: always()

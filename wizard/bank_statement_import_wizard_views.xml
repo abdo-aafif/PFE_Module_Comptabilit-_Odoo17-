@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_bank_statement_import_wizard_form" model="ir.ui.view">
+        <field name="name">bank.statement.import.wizard.form</field>
+        <field name="model">bank.statement.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Relevé Bancaire">
+                <group string="Paramètres généraux">
+                    <field name="journal_id"/>
+                    <field name="file_format"/>
+                    <field name="import_file" filename="filename" widget="binary"/>
+                    <field name="filename" invisible="1"/>
+                </group>
+
+                <!-- Options CSV uniquement -->
+                <group string="Options CSV" invisible="file_format != 'csv'">
+                    <group>
+                        <field name="csv_delimiter"/>
+                        <field name="csv_date_format"/>
+                        <field name="csv_skip_header"/>
+                    </group>
+                    <group>
+                        <field name="csv_col_date"/>
+                        <field name="csv_col_label"/>
+                        <field name="csv_col_amount"/>
+                        <field name="csv_col_ref"/>
+                    </group>
+                </group>
+
+                <!-- Aide format CSV -->
+                <div invisible="file_format != 'csv'" class="alert alert-info" role="alert">
+                    <strong>Format CSV attendu (séparateur « ; » par défaut) :</strong><br/>
+                    <code>Date;Libellé;Montant;Référence</code><br/>
+                    <code>01/01/2026;Initial balance;5103.00;SOL2026</code><br/>
+                    <code>01/01/2026;Azure Interior;-1275.00;INV/2026/00002</code>
+                </div>
+
+                <!-- Aide format OFX -->
+                <div invisible="file_format != 'ofx'" class="alert alert-info" role="alert">
+                    <strong>Fichiers OFX supportés :</strong> OFX 1.x (SGML) et OFX 2.x (XML).<br/>
+                    Exportez votre relevé depuis votre banque en ligne au format <strong>.ofx</strong>.
+                </div>
+
+                <!-- Aide format MT940 -->
+                <div invisible="file_format != 'mt940'" class="alert alert-info" role="alert">
+                    <strong>Fichiers MT940 supportés :</strong> format SWIFT standard.<br/>
+                    Demandez à votre banque l'export du relevé au format <strong>MT940 (.sta / .txt)</strong>.
+                </div>
+
+                <footer>
+                    <button name="action_import" type="object"
+                            string="Importer" class="btn-primary"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bank_statement_import_wizard" model="ir.actions.act_window">
+        <field name="name">Importer un Relevé Bancaire</field>
+        <field name="res_model">bank.statement.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

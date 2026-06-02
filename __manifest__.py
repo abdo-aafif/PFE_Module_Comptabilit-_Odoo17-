@@ -17,11 +17,11 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures Comptables + Journaux Comptables (Ventes, Achats, Banque, Caisse, OD, À-Nouveaux)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire (Import CSV/OFX/MT940, Rapprochement, Suivi)',
     'description': """
-Module de comptabilité pour Odoo 17 Community — PUSH 3
+Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
 Section 3.1.1 du CDC : Plan Comptable
   • PCGE marocain par défaut (via l10n_ma)
@@ -44,6 +44,12 @@ Section 3.1.3 du CDC : Journaux Comptables
   • Journal de caisse (natif Odoo via l10n_ma)
   • Journal des opérations diverses — OD (natif Odoo via l10n_ma)
   • Journal des à-nouveaux (création via post_init_hook pour TOUTES les sociétés)
+
+Section 3.1.4 du CDC : Gestion Bancaire
+  • Rapprochement bancaire (imputation directe + association à facture)
+  • Import des relevés bancaires (CSV, OFX 1.x/2.x, MT940 SWIFT)
+  • Rapprochement automatique (modèles de règles natifs Odoo)
+  • Suivi des comptes bancaires (reporting trésorerie)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -67,13 +73,15 @@ Section 3.1.3 du CDC : Journaux Comptables
     #   2. Bridges de sécurité (implication de groupes).
     #   3. Vues et actions analytiques (3.1.1).
     #   4. Vues et actions liées aux écritures comptables (3.1.2) :
-    #         a. Overrides (saisie manuelle + lettrage)
+    #         a. Overrides (saisie manuelle + lettrage + actions bancaires 3.1.4)
     #         b. Vues et action des écritures récurrentes
     #   5. Données des journaux comptables (3.1.3) :
     #         - Journaux Ventes/Achats/Banque/Caisse/OD fournis nativement par l10n_ma
-    #         - Journal des à-nouveaux (AN) : créé via post_init_hook pour TOUTES
-    #           les sociétés (pas par XML, pour éviter le problème multi-sociétés)
-    #   6. Arborescence de menus (référence les actions ⇒ chargée en dernier).
+    #         - Journal des à-nouveaux (AN) : créé via post_init_hook
+    #   6. Wizards de gestion bancaire (3.1.4) :
+    #         - Import relevés bancaires (CSV, OFX, MT940)
+    #         - Rapprochement bancaire (write-off + association)
+    #   7. Arborescence de menus (référence les actions ⇒ chargée en dernier).
     'data': [
         'security/ir.model.access.csv',
         'data/journal_data.xml',
@@ -81,6 +89,9 @@ Section 3.1.3 du CDC : Journaux Comptables
         'views/account_analytic_views.xml',
         'views/compta_overrides.xml',
         'views/account_recurring_views.xml',
+        # 3.1.4 Gestion Bancaire
+        'wizard/bank_statement_import_wizard_views.xml',
+        'wizard/bank_reconciliation_wizard_views.xml',
         'views/menus.xml',
     ],
 
