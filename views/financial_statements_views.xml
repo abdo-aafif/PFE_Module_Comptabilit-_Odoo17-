@@ -107,19 +107,17 @@
                                         string="Imprimer PDF"
                                         type="object"
                                         class="btn btn-secondary"
-                                        invisible="bilan_line_ids == []"/>
+                                        invisible="not bilan_actif_line_ids and not bilan_passif_line_ids"/>
                             </div>
                             <!-- ACTIF -->
                             <separator string="ACTIF"/>
-                            <field name="bilan_line_ids"
-                                   domain="[('section','=','actif')]"
+                            <field name="bilan_actif_line_ids"
                                    nolabel="1"
                                    widget="one2many_list"
                                    context="{'tree_view_ref': 'pfe.view_financial_bilan_line_tree'}"/>
                             <!-- PASSIF -->
                             <separator string="PASSIF"/>
-                            <field name="bilan_line_ids"
-                                   domain="[('section','=','passif')]"
+                            <field name="bilan_passif_line_ids"
                                    nolabel="1"
                                    widget="one2many_list"
                                    context="{'tree_view_ref': 'pfe.view_financial_bilan_line_tree'}"/>
