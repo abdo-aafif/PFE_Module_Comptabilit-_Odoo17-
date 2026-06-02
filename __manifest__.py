@@ -17,9 +17,9 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.3.0',
+    'version': '17.0.1.4.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire (Import CSV/OFX/MT940, Rapprochement, Suivi)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (TVA mensuelle/trimestrielle, calcul automatique, export SIMPL-TVA DGI)',
     'description': """
 Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
@@ -50,6 +50,13 @@ Section 3.1.4 du CDC : Gestion Bancaire
   • Import des relevés bancaires (CSV, OFX 1.x/2.x, MT940 SWIFT)
   • Rapprochement automatique (modèles de règles natifs Odoo)
   • Suivi des comptes bancaires (reporting trésorerie)
+
+Section 3.1.5 du CDC : Déclarations Fiscales
+  • TVA : déclaration mensuelle / trimestrielle (régime configurable sur la société)
+  • Calcul automatique de la TVA selon l'encaissement (collectée, déductible, à payer)
+  • Ventilation par taux + détail d'audit par facture/lettrage
+  • Gestion des taux TVA marocains (20%, 14%, 10%, 7%, 0%) — fournis par l10n_ma
+  • Export XML pour télédéclaration SIMPL-TVA (DGI Maroc) : Relevé des Déductions
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -92,6 +99,9 @@ Section 3.1.4 du CDC : Gestion Bancaire
         # 3.1.4 Gestion Bancaire
         'wizard/bank_statement_import_wizard_views.xml',
         'wizard/bank_reconciliation_wizard_views.xml',
+        # 3.1.5 Déclarations Fiscales (TVA + SIMPL-TVA)
+        'wizard/simpl_tva_wizard_views.xml',
+        'views/account_tva_declaration_views.xml',
         'views/menus.xml',
     ],
 

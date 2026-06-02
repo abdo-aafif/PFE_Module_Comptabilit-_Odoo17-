@@ -28,3 +28,6 @@ coexistent (cf. ``account_analytic_line.py``).
 # le fichier ``.flake8`` à la racine.
 from . import account_analytic_line
 from . import account_recurring
+# Section 3.1.5 du CDC : Déclarations Fiscales
+from . import res_company
+from . import account_tva_declaration

@@ -35,3 +35,5 @@ from . import test_plan_comptable
 from . import test_ecritures_comptables
 from . import test_journaux_comptables
 from . import test_bank_gestion
+# Section 3.1.5 du CDC : Déclarations Fiscales (TVA + SIMPL-TVA)
+from . import test_tva_declaration
