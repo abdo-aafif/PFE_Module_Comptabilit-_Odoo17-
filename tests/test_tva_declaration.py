@@ -1,5 +1,5 @@
 from datetime import date
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase, tagged
 
 
