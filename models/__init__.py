@@ -41,3 +41,7 @@ from . import account_asset
 
 # Section 3.2.3 du CDC : Clôture Comptable
 from . import account_period_close
+
+# Section 3.2.1 du CDC : États Financiers (Bilan / CPC / Flux + report builder)
+from . import financial_statements
+from . import custom_report_builder

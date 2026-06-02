@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================ -->
+    <!-- BILAN LINE (embedded tree, read-only)                        -->
+    <!-- ============================================================ -->
+    <record id="view_financial_bilan_line_tree" model="ir.ui.view">
+        <field name="name">financial.bilan.line.tree</field>
+        <field name="model">financial.bilan.line</field>
+        <field name="arch" type="xml">
+            <tree string="Bilan" create="false" edit="false" delete="false"
+                  default_order="sequence">
+                <field name="sequence"  column_invisible="1"/>
+                <field name="level"     column_invisible="1"/>
+                <field name="is_total"  column_invisible="1"/>
+                <field name="bold"      column_invisible="1"/>
+                <field name="section"   column_invisible="1"/>
+                <field name="name"
+                       string="Désignation"
+                       decoration-bf="bold == True"
+                       decoration-muted="is_total == False and level == 0 and amount == 0"/>
+                <field name="amount"
+                       string="Montant (MAD)"
+                       widget="monetary"
+                       options="{'currency_field': False}"
+                       decoration-bf="is_total == True"
+                       decoration-danger="amount &lt; 0"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- CPC LINE (embedded tree)                                     -->
+    <!-- ============================================================ -->
+    <record id="view_financial_cpc_line_tree" model="ir.ui.view">
+        <field name="name">financial.cpc.line.tree</field>
+        <field name="model">financial.cpc.line</field>
+        <field name="arch" type="xml">
+            <tree string="CPC" create="false" edit="false" delete="false"
+                  default_order="sequence">
+                <field name="sequence"  column_invisible="1"/>
+                <field name="is_total"  column_invisible="1"/>
+                <field name="bold"      column_invisible="1"/>
+                <field name="name"
+                       string="Désignation"
+                       decoration-bf="bold == True"/>
+                <field name="amount"
+                       string="Montant (MAD)"
+                       widget="monetary"
+                       options="{'currency_field': False}"
+                       decoration-bf="is_total == True"
+                       decoration-danger="amount &lt; 0"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- FLUX LINE (embedded tree)                                    -->
+    <!-- ============================================================ -->
+    <record id="view_financial_flux_line_tree" model="ir.ui.view">
+        <field name="name">financial.flux.line.tree</field>
+        <field name="model">financial.flux.line</field>
+        <field name="arch" type="xml">
+            <tree string="Flux de Trésorerie" create="false" edit="false" delete="false"
+                  default_order="sequence">
+                <field name="sequence"  column_invisible="1"/>
+                <field name="is_total"  column_invisible="1"/>
+                <field name="bold"      column_invisible="1"/>
+                <field name="name"
+                       string="Désignation"
+                       decoration-bf="bold == True"/>
+                <field name="amount"
+                       string="Montant (MAD)"
+                       widget="monetary"
+                       options="{'currency_field': False}"
+                       decoration-bf="is_total == True"
+                       decoration-danger="amount &lt; 0"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- FINANCIAL STATEMENT WIZARD FORM                              -->
+    <!-- ============================================================ -->
+    <record id="view_financial_statement_wizard_form" model="ir.ui.view">
+        <field name="name">financial.statement.wizard.form</field>
+        <field name="model">financial.statement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="États Financiers">
+                <sheet>
+                    <!-- Parameters bar -->
+                    <group string="Paramètres" col="4">
+                        <field name="company_id" options="{'no_create': True}"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+
+                    <notebook>
+                        <!-- ─── BILAN ─────────────────────────────────────── -->
+                        <page string="Bilan (Actif / Passif)" name="bilan">
+                            <div class="o_row mb-2">
+                                <button name="action_compute_bilan"
+                                        string="Calculer le Bilan"
+                                        type="object"
+                                        class="btn btn-primary"/>
+                                <button name="action_print_bilan"
+                                        string="Imprimer PDF"
+                                        type="object"
+                                        class="btn btn-secondary"
+                                        invisible="bilan_line_ids == []"/>
+                            </div>
+                            <!-- ACTIF -->
+                            <separator string="ACTIF"/>
+                            <field name="bilan_line_ids"
+                                   domain="[('section','=','actif')]"
+                                   nolabel="1"
+                                   widget="one2many_list"
+                                   context="{'tree_view_ref': 'pfe.view_financial_bilan_line_tree'}"/>
+                            <!-- PASSIF -->
+                            <separator string="PASSIF"/>
+                            <field name="bilan_line_ids"
+                                   domain="[('section','=','passif')]"
+                                   nolabel="1"
+                                   widget="one2many_list"
+                                   context="{'tree_view_ref': 'pfe.view_financial_bilan_line_tree'}"/>
+                        </page>
+
+                        <!-- ─── CPC ───────────────────────────────────────── -->
+                        <page string="CPC – Compte de Résultat" name="cpc">
+                            <div class="o_row mb-2">
+                                <button name="action_compute_cpc"
+                                        string="Calculer le CPC"
+                                        type="object"
+                                        class="btn btn-primary"/>
+                                <button name="action_print_cpc"
+                                        string="Imprimer PDF"
+                                        type="object"
+                                        class="btn btn-secondary"
+                                        invisible="cpc_line_ids == []"/>
+                            </div>
+                            <field name="cpc_line_ids" nolabel="1"
+                                   context="{'tree_view_ref': 'pfe.view_financial_cpc_line_tree'}"/>
+                        </page>
+
+                        <!-- ─── FLUX ──────────────────────────────────────── -->
+                        <page string="Flux de Trésorerie" name="flux">
+                            <div class="o_row mb-2">
+                                <button name="action_compute_flux"
+                                        string="Calculer les Flux"
+                                        type="object"
+                                        class="btn btn-primary"/>
+                                <button name="action_print_flux"
+                                        string="Imprimer PDF"
+                                        type="object"
+                                        class="btn btn-secondary"
+                                        invisible="flux_line_ids == []"/>
+                            </div>
+                            <field name="flux_line_ids" nolabel="1"
+                                   context="{'tree_view_ref': 'pfe.view_financial_flux_line_tree'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_financial_statement_wizard" model="ir.actions.act_window">
+        <field name="name">États Financiers</field>
+        <field name="res_model">financial.statement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- CUSTOM REPORT BUILDER                                        -->
+    <!-- ============================================================ -->
+
+    <!-- Report template list -->
+    <record id="view_custom_financial_report_tree" model="ir.ui.view">
+        <field name="name">custom.financial.report.tree</field>
+        <field name="model">custom.financial.report</field>
+        <field name="arch" type="xml">
+            <tree string="Rapports personnalisés">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="note"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Report template form -->
+    <record id="view_custom_financial_report_form" model="ir.ui.view">
+        <field name="name">custom.financial.report.form</field>
+        <field name="model">custom.financial.report</field>
+        <field name="arch" type="xml">
+            <form string="Rapport financier personnalisé">
+                <header>
+                    <button name="action_compute" string="Calculer ce rapport"
+                            type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="note" placeholder="Description facultative…"/>
+                    </group>
+                    <notebook>
+                        <page string="Définition des lignes">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence"  widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                    <field name="line_type"/>
+                                    <field name="account_prefixes"
+                                           invisible="line_type not in ['account']"
+                                           required="line_type == 'account'"/>
+                                    <field name="sign"
+                                           invisible="line_type not in ['account']"/>
+                                    <field name="balance_type"
+                                           invisible="line_type not in ['account']"/>
+                                    <field name="formula"
+                                           invisible="line_type != 'formula'"
+                                           required="line_type == 'formula'"/>
+                                    <field name="level"/>
+                                    <field name="is_total"/>
+                                    <field name="bold"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_custom_financial_report" model="ir.actions.act_window">
+        <field name="name">Rapports Personnalisés</field>
+        <field name="res_model">custom.financial.report</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Custom report result wizard -->
+    <record id="view_custom_report_result_wizard_form" model="ir.ui.view">
+        <field name="name">custom.report.result.wizard.form</field>
+        <field name="model">custom.report.result.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Résultat – Rapport personnalisé">
+                <sheet>
+                    <group col="4">
+                        <field name="report_id" options="{'no_create': True}"/>
+                        <field name="company_id" options="{'no_create': True}"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <div class="o_row mb-2">
+                        <button name="action_compute" string="Calculer"
+                                type="object" class="btn btn-primary"/>
+                        <button name="action_print" string="Imprimer PDF"
+                                type="object" class="btn btn-secondary"
+                                invisible="result_ids == []"/>
+                    </div>
+                    <field name="result_ids" nolabel="1">
+                        <tree create="false" edit="false" delete="false"
+                              default_order="sequence">
+                            <field name="sequence"   column_invisible="1"/>
+                            <field name="is_total"   column_invisible="1"/>
+                            <field name="bold"       column_invisible="1"/>
+                            <field name="has_amount" column_invisible="1"/>
+                            <field name="name"       decoration-bf="bold == True"/>
+                            <field name="amount"     widget="monetary"
+                                                     options="{'currency_field': False}"
+                                                     decoration-bf="is_total == True"
+                                                     decoration-danger="amount &lt; 0"
+                                                     invisible="has_amount == False"/>
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <button string="Fermer" class="btn btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
