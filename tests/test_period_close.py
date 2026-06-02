@@ -29,9 +29,17 @@ class _PeriodCloseCommon(TransactionCase):
         cls.Move = cls.env["account.move"]
 
         Account = cls.env["account.account"]
+        # IMPORTANT : le wizard ``_generate_opening_entries`` classe les
+        # comptes via leur **premier caractère** de code (PCGE marocain) :
+        #   '5' → trésorerie (bilan, reporté)
+        #   '6' → charges  (résultat)
+        #   '7' → produits (résultat)
+        #   '1' → capitaux (bilan, reporté)
+        # Les codes doivent donc démarrer par le bon digit. Le suffixe ``Z``
+        # garantit l'unicité par rapport aux codes l10n_ma standards.
         cls.account_bank = Account.create(
             {
-                "code": "T5141",
+                "code": "5141Z",
                 "name": "Test Banque",
                 "account_type": "asset_cash",
                 "reconcile": True,
@@ -40,7 +48,7 @@ class _PeriodCloseCommon(TransactionCase):
         )
         cls.account_income = Account.create(
             {
-                "code": "T7111",
+                "code": "7111Z",
                 "name": "Test Ventes",
                 "account_type": "income",
                 "company_id": cls.company.id,
@@ -48,17 +56,15 @@ class _PeriodCloseCommon(TransactionCase):
         )
         cls.account_expense = Account.create(
             {
-                "code": "T6111",
+                "code": "6111Z",
                 "name": "Test Achats",
                 "account_type": "expense",
                 "company_id": cls.company.id,
             }
         )
-        # Comptes résultat PCGE — codes commencent par '1' pour passer
-        # dans la branche "report à nouveau" du wizard.
         cls.account_benefit = Account.create(
             {
-                "code": "T11910",
+                "code": "1191Z",
                 "name": "Test Résultat net bénéfice",
                 "account_type": "equity",
                 "company_id": cls.company.id,
@@ -66,7 +72,7 @@ class _PeriodCloseCommon(TransactionCase):
         )
         cls.account_loss = Account.create(
             {
-                "code": "T11990",
+                "code": "1199Z",
                 "name": "Test Résultat net perte",
                 "account_type": "equity",
                 "company_id": cls.company.id,
@@ -283,8 +289,19 @@ class TestPreCloseChecks(_PeriodCloseCommon):
         self.assertTrue(wiz.check_no_draft)
 
     def test_run_checks_requires_dates(self):
-        wiz = self._make_wizard()
-        wiz.date_from = False
+        """date_from manquant ⇒ UserError (garde-fou défensif)."""
+        # Wizard non persisté (new()) pour éviter la contrainte NOT NULL DB
+        # qui s'applique sur un record réellement créé.
+        wiz = self.Wizard.new(
+            {
+                "company_id": self.company.id,
+                "close_type": "monthly",
+                "date_to": date(2025, 1, 31),
+                "opening_journal_id": self.journal.id,
+                "account_result_id": self.account_benefit.id,
+                "account_result_loss_id": self.account_loss.id,
+            }
+        )
         with self.assertRaises(UserError):
             wiz.action_run_checks()
 
