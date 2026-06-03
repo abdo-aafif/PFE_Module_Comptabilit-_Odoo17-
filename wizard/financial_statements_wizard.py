@@ -640,6 +640,112 @@ class FinancialStatementWizard(models.TransientModel):
             self.action_compute_flux()
         return self.env.ref(f"{self._module}.action_report_flux").report_action(self)
 
+    # ── DASHBOARD OWL (JSON-RPC endpoint) ────────────────────────────────────
+
+    @api.model
+    def get_dashboard_data(self, date_from=None, date_to=None, company_id=None):
+        """Endpoint JSON-RPC pour le Dashboard OWL.
+
+        Retourne KPIs + données structurées prêtes pour Chart.js :
+          - 4 KPI cards (Actif, Passif, Résultat net, Trésorerie nette)
+          - Donut Actif (Immobilisé / Circulant / Trésorerie)
+          - Donut Passif (Fin. Permanent / Circulant / Trésorerie Passif)
+          - Bar CPC (Produits Expl / Charges Expl / Résultat Expl)
+          - Bar Flux (Exploitation / Investissement / Financement)
+        """
+        today = date_cls.today()
+        company_id = company_id or self.env.company.id
+        df = fields.Date.from_string(date_from) if date_from else date_cls(today.year, 1, 1)
+        dt = fields.Date.from_string(date_to) if date_to else date_cls(today.year, 12, 31)
+
+        wiz = self.new({"company_id": company_id, "date_from": df, "date_to": dt})
+
+        # ---- Agrégats BILAN ----
+        cid = company_id
+        immo = wiz._balance_at(
+            ["211", "212", "213", "281", "221", "222", "223", "228", "282", "292",
+             "231", "232", "233", "234", "235", "238", "239", "283", "293",
+             "241", "248", "251", "258", "294", "295", "271", "272"],
+            dt, cid, 1,
+        )
+        circ = wiz._balance_at(
+            ["311", "312", "313", "314", "315", "391",
+             "341", "342", "343", "345", "346", "348", "349", "394",
+             "350", "395", "370"],
+            dt, cid, 1,
+        )
+        tresor_a = wiz._balance_at(["511", "514", "516", "590"], dt, cid, 1)
+        total_actif = immo + circ + tresor_a
+
+        fin_perm = wiz._balance_at(
+            ["111", "112", "113", "114", "115", "116", "118", "119",
+             "131", "135", "141", "148", "151", "155", "160", "171", "172"],
+            dt, cid, -1,
+        )
+        # Ajouter résultat cumulé non clôturé
+        fin_perm += wiz._compute_cumulative_resultat(dt, cid)
+        pass_circ = wiz._balance_at(
+            ["441", "442", "443", "444", "445", "446", "448", "449", "450", "470"],
+            dt, cid, -1,
+        )
+        tresor_p = wiz._balance_at(["552", "553", "554"], dt, cid, -1)
+        total_passif = fin_perm + pass_circ + tresor_p
+
+        # ---- Agrégats CPC ----
+        prod_expl = wiz._period_balance(
+            ["711", "712", "713", "714", "716", "718", "719"], df, dt, cid, sign=-1
+        )
+        ch_expl = wiz._period_balance(
+            ["611", "612", "613", "614", "616", "617", "618", "619"], df, dt, cid, sign=1
+        )
+        res_expl = prod_expl - ch_expl
+
+        prod_fin = wiz._period_balance(["732", "733", "738", "739"], df, dt, cid, sign=-1)
+        ch_fin = wiz._period_balance(["631", "633", "638", "639"], df, dt, cid, sign=1)
+        prod_nc = wiz._period_balance(["751", "756", "757", "758", "759"], df, dt, cid, sign=-1)
+        ch_nc = wiz._period_balance(["651", "656", "658", "659"], df, dt, cid, sign=1)
+        impots = wiz._period_balance(["670"], df, dt, cid, sign=1)
+        resultat_net = (prod_expl + prod_fin + prod_nc) - (ch_expl + ch_fin + ch_nc) - impots
+
+        # ---- Agrégats FLUX ----
+        flux_lines = wiz._get_flux_lines()
+        flux_expl = next((ln["amount"] for ln in flux_lines if "FLUX NET D'EXPLOITATION" in ln["name"]), 0.0)
+        flux_inv = next((ln["amount"] for ln in flux_lines if "FLUX NET D'INVESTISSEMENT" in ln["name"]), 0.0)
+        flux_fin = next((ln["amount"] for ln in flux_lines if "FLUX NET DE FINANCEMENT" in ln["name"]), 0.0)
+        tresor_nette = tresor_a - wiz._balance_at(["552", "553", "554"], dt, cid, 1)
+
+        company = self.env["res.company"].browse(cid)
+        currency = company.currency_id.symbol or "MAD"
+
+        return {
+            "company_name": company.name,
+            "currency": currency,
+            "date_from": fields.Date.to_string(df),
+            "date_to": fields.Date.to_string(dt),
+            "kpis": {
+                "total_actif": round(total_actif, 2),
+                "total_passif": round(total_passif, 2),
+                "resultat_net": round(resultat_net, 2),
+                "tresorerie_nette": round(tresor_nette, 2),
+            },
+            "actif_chart": {
+                "labels": ["Actif Immobilisé", "Actif Circulant", "Trésorerie Actif"],
+                "data": [round(immo, 2), round(circ, 2), round(tresor_a, 2)],
+            },
+            "passif_chart": {
+                "labels": ["Financement Permanent", "Passif Circulant", "Trésorerie Passif"],
+                "data": [round(fin_perm, 2), round(pass_circ, 2), round(tresor_p, 2)],
+            },
+            "cpc_chart": {
+                "labels": ["Produits d'Exploitation", "Charges d'Exploitation", "Résultat d'Exploitation"],
+                "data": [round(prod_expl, 2), round(ch_expl, 2), round(res_expl, 2)],
+            },
+            "flux_chart": {
+                "labels": ["Exploitation", "Investissement", "Financement"],
+                "data": [round(flux_expl, 2), round(flux_inv, 2), round(flux_fin, 2)],
+            },
+        }
+
     def _get_flux_lines(self):
         cid = self.company_id.id
         df = self.date_from

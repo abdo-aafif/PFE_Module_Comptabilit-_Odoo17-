@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="pfe.ComptaDashboard">
+        <div class="o_compta_dashboard">
+            <!-- ═══════════════════════════════════════════════════════════
+                 HEADER : Titre + Filtres
+                 ═══════════════════════════════════════════════════════════ -->
+            <div class="o_dashboard_header">
+                <div class="o_dashboard_title">
+                    <h2>
+                        <i class="fa fa-chart-pie me-2"/>
+                        Tableau de Bord — États Financiers
+                    </h2>
+                    <small class="text-muted" t-if="state.companyName">
+                        <t t-esc="state.companyName"/>
+                    </small>
+                </div>
+
+                <div class="o_dashboard_filters">
+                    <div class="o_filter_item">
+                        <label>Du</label>
+                        <input type="date"
+                               t-att-value="state.dateFrom"
+                               t-on-change="(ev) => this.onDateChange('dateFrom', ev)"
+                               class="form-control form-control-sm"/>
+                    </div>
+                    <div class="o_filter_item">
+                        <label>Au</label>
+                        <input type="date"
+                               t-att-value="state.dateTo"
+                               t-on-change="(ev) => this.onDateChange('dateTo', ev)"
+                               class="form-control form-control-sm"/>
+                    </div>
+                    <button class="btn btn-primary btn-sm"
+                            t-on-click="onApplyFilters"
+                            t-att-disabled="state.loading">
+                        <i class="fa fa-refresh me-1"/> Actualiser
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm"
+                            t-on-click="onResetFilters">
+                        <i class="fa fa-undo me-1"/> Réinitialiser
+                    </button>
+                    <button class="btn btn-outline-info btn-sm"
+                            t-on-click="openFullWizard">
+                        <i class="fa fa-list-alt me-1"/> Vue détaillée
+                    </button>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 CONTENT — toujours rendu pour que les refs canvas existent.
+                 Un overlay de chargement se superpose pendant les requêtes.
+                 ═══════════════════════════════════════════════════════════ -->
+            <div class="o_dashboard_content position-relative">
+
+                <!-- Overlay de chargement -->
+                <div t-if="state.loading" class="o_dashboard_loading_overlay">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement…</span>
+                    </div>
+                    <p class="mt-2 text-muted">Calcul des indicateurs en cours…</p>
+                </div>
+
+                <!-- KPI Cards (4) -->
+                <div class="o_kpi_row">
+                    <div class="o_kpi_card o_kpi_actif">
+                        <div class="o_kpi_icon"><i class="fa fa-building"/></div>
+                        <div class="o_kpi_body">
+                            <div class="o_kpi_label">Total Actif</div>
+                            <div class="o_kpi_value">
+                                <t t-esc="formatMoney(state.kpis.total_actif)"/>
+                                <span class="o_kpi_unit"><t t-esc="state.currency"/></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="o_kpi_card o_kpi_passif">
+                        <div class="o_kpi_icon"><i class="fa fa-balance-scale"/></div>
+                        <div class="o_kpi_body">
+                            <div class="o_kpi_label">Total Passif</div>
+                            <div class="o_kpi_value">
+                                <t t-esc="formatMoney(state.kpis.total_passif)"/>
+                                <span class="o_kpi_unit"><t t-esc="state.currency"/></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="o_kpi_card"
+                         t-att-class="getKpiClass(state.kpis.resultat_net)">
+                        <div class="o_kpi_icon"><i class="fa fa-line-chart"/></div>
+                        <div class="o_kpi_body">
+                            <div class="o_kpi_label">Résultat Net</div>
+                            <div class="o_kpi_value">
+                                <t t-esc="formatMoney(state.kpis.resultat_net)"/>
+                                <span class="o_kpi_unit"><t t-esc="state.currency"/></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="o_kpi_card"
+                         t-att-class="getKpiClass(state.kpis.tresorerie_nette)">
+                        <div class="o_kpi_icon"><i class="fa fa-university"/></div>
+                        <div class="o_kpi_body">
+                            <div class="o_kpi_label">Trésorerie Nette</div>
+                            <div class="o_kpi_value">
+                                <t t-esc="formatMoney(state.kpis.tresorerie_nette)"/>
+                                <span class="o_kpi_unit"><t t-esc="state.currency"/></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts row 1 : Donut Actif + Donut Passif -->
+                <div class="o_chart_row">
+                    <div class="o_chart_card">
+                        <div class="o_chart_canvas_wrapper">
+                            <canvas t-ref="actifCanvas"/>
+                        </div>
+                    </div>
+                    <div class="o_chart_card">
+                        <div class="o_chart_canvas_wrapper">
+                            <canvas t-ref="passifCanvas"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts row 2 : Bar CPC + Bar Flux -->
+                <div class="o_chart_row">
+                    <div class="o_chart_card">
+                        <div class="o_chart_canvas_wrapper">
+                            <canvas t-ref="cpcCanvas"/>
+                        </div>
+                    </div>
+                    <div class="o_chart_card">
+                        <div class="o_chart_canvas_wrapper">
+                            <canvas t-ref="fluxCanvas"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer info -->
+                <div class="o_dashboard_footer text-muted">
+                    <small>
+                        <i class="fa fa-info-circle"/>
+                        Période analysée : <strong t-esc="state.dateFrom"/> → <strong t-esc="state.dateTo"/>
+                        — Cliquez sur "Vue détaillée" pour accéder au formulaire complet avec impression PDF.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

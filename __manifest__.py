@@ -140,6 +140,17 @@ Section 3.2.1 du CDC : États Financiers
         'views/menus.xml',
     ],
 
+    # Assets frontend (OWL Dashboard — section 3.2.1 États Financiers).
+    # Chargés dans le bundle backend → disponibles dans l'interface Odoo
+    # une fois l'utilisateur authentifié.
+    'assets': {
+        'web.assets_backend': [
+            'pfe/static/src/dashboard/compta_dashboard.js',
+            'pfe/static/src/dashboard/compta_dashboard.xml',
+            'pfe/static/src/dashboard/compta_dashboard.scss',
+        ],
+    },
+
     # Hook exécuté après installation/mise à jour :
     # crée le Journal des à-nouveaux (AN) dans TOUTES les sociétés existantes.
     'post_init_hook': 'post_init_hook',

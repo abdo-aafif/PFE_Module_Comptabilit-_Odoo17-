@@ -1,0 +1,232 @@
+/* ─────────────────────────────────────────────────────────────────
+   Dashboard OWL — États Financiers
+   ───────────────────────────────────────────────────────────────── */
+
+.o_compta_dashboard {
+    padding: 20px 24px;
+    background: #f4f6f9;
+    min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* ── HEADER ────────────────────────────────────────────── */
+    .o_dashboard_header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e5e8ec;
+
+        .o_dashboard_title {
+            h2 {
+                margin: 0;
+                color: #2c3e50;
+                font-weight: 600;
+                font-size: 1.5rem;
+            }
+            small {
+                font-size: 0.9rem;
+            }
+        }
+
+        .o_dashboard_filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 10px;
+
+            .o_filter_item {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+
+                label {
+                    font-size: 0.75rem;
+                    color: #6c757d;
+                    font-weight: 500;
+                    margin: 0;
+                }
+                input {
+                    min-width: 140px;
+                }
+            }
+        }
+    }
+
+    /* ── LOADING OVERLAY ─────────────────────────────────────── */
+    .o_dashboard_loading_overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(244, 246, 249, 0.85);
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+    }
+
+    /* ── KPI CARDS ─────────────────────────────────────────── */
+    .o_kpi_row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .o_kpi_card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: white;
+        border-radius: 10px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+        border-left: 4px solid #6c757d;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .o_kpi_icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #f1f3f5;
+            color: #6c757d;
+            font-size: 1.4rem;
+        }
+
+        .o_kpi_body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .o_kpi_label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6c757d;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .o_kpi_value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #2c3e50;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+
+            .o_kpi_unit {
+                font-size: 0.85rem;
+                color: #6c757d;
+                font-weight: 500;
+                margin-left: 4px;
+            }
+        }
+
+        /* Variants colorées */
+        &.o_kpi_actif {
+            border-left-color: #4e79a7;
+            .o_kpi_icon { background: rgba(78, 121, 167, 0.12); color: #4e79a7; }
+        }
+        &.o_kpi_passif {
+            border-left-color: #e15759;
+            .o_kpi_icon { background: rgba(225, 87, 89, 0.12); color: #e15759; }
+        }
+        &.o_kpi_positive {
+            border-left-color: #28a745;
+            .o_kpi_icon { background: rgba(40, 167, 69, 0.12); color: #28a745; }
+            .o_kpi_value { color: #28a745; }
+        }
+        &.o_kpi_negative {
+            border-left-color: #dc3545;
+            .o_kpi_icon { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+            .o_kpi_value { color: #dc3545; }
+        }
+        &.o_kpi_neutral {
+            border-left-color: #6c757d;
+        }
+    }
+
+    /* ── CHART CARDS ───────────────────────────────────────── */
+    .o_chart_row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .o_chart_card {
+        background: white;
+        border-radius: 10px;
+        padding: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+        height: 360px;
+        display: flex;
+        flex-direction: column;
+
+        /* Wrapper indispensable pour que Chart.js
+           récupère correctement les dimensions */
+        .o_chart_canvas_wrapper {
+            position: relative;
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: 0; /* permet au flex item de rétrécir */
+
+            canvas {
+                position: absolute;
+                top: 0; left: 0;
+                width: 100% !important;
+                height: 100% !important;
+            }
+        }
+    }
+
+    /* ── FOOTER ────────────────────────────────────────────── */
+    .o_dashboard_footer {
+        margin-top: 16px;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 0.85rem;
+
+        i {
+            color: #17a2b8;
+            margin-right: 6px;
+        }
+    }
+
+    /* ── RESPONSIVE ───────────────────────────────────────── */
+    @media (max-width: 768px) {
+        padding: 12px;
+
+        .o_dashboard_header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .o_dashboard_filters {
+            justify-content: stretch;
+
+            .o_filter_item input {
+                min-width: 0;
+                width: 100%;
+            }
+        }
+
+        .o_chart_card {
+            height: 280px;
+        }
+    }
+}
