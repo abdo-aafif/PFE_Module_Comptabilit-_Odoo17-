@@ -50,3 +50,6 @@ from . import test_period_close
 
 # Section 3.2.1 du CDC : États Financiers (Bilan / CPC / Flux)
 from . import test_financial_statements
+
+# Section 3.2.4 du CDC : Multi-devises (réévaluation écarts de conversion)
+from . import test_multicurrency

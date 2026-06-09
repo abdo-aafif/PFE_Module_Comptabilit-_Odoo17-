@@ -337,4 +337,33 @@
               action="action_custom_financial_report"
               sequence="3"/>
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.2.4 — MULTI-DEVISES (Menus)
+           • Gestion des écritures en devises étrangères
+           • Écarts de conversion automatiques
+           • Taux de change (mise à jour manuelle / automatique)
+         ══════════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_compta_multi_currency"
+              name="Multi-Devises"
+              parent="menu_comptabilite_maroc_root"
+              sequence="5"/>
+
+    <menuitem id="menu_compta_devises_taux"
+              name="Devises &amp; Taux de Change"
+              parent="menu_compta_multi_currency"
+              action="base.action_currency_form"
+              sequence="1"/>
+
+    <menuitem id="menu_compta_ecritures_devises"
+              name="Écritures en Devises Étrangères"
+              parent="menu_compta_multi_currency"
+              action="action_compta_ecritures_devises"
+              sequence="2"/>
+
+    <menuitem id="menu_compta_ecarts_conversion"
+              name="Écarts de Conversion"
+              parent="menu_compta_multi_currency"
+              action="action_compta_currency_revaluation_wizard"
+              sequence="3"/>
+
 </odoo>

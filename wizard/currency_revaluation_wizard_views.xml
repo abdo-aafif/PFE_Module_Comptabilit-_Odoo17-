@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_compta_currency_revaluation_wizard_form" model="ir.ui.view">
+        <field name="name">compta.currency.revaluation.wizard.form</field>
+        <field name="model">compta.currency.revaluation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Évaluation Multi-Devises">
+                <sheet>
+                    <group>
+                        <group string="Paramètres d'évaluation">
+                            <field name="company_id" invisible="1"/>
+                            <field name="revaluation_date"/>
+                            <field name="journal_id"/>
+                        </group>
+                        <group string="Comptes d'écarts (Ex: PCGE 6331/7331 ou 471/472)">
+                            <field name="income_account_id"/>
+                            <field name="expense_account_id"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button string="Calculer et Générer l'OD" name="action_revaluate" type="object" class="oe_highlight"/>
+                        <button string="Annuler" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_compta_currency_revaluation_wizard" model="ir.actions.act_window">
+        <field name="name">Évaluation Devise Étrangère Fin de Période</field>
+        <field name="res_model">compta.currency.revaluation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Vue personnalisée pour analyser les écritures en devises -->
+    <record id="view_compta_move_line_currency_tree" model="ir.ui.view">
+        <field name="name">compta.move.line.currency.tree</field>
+        <field name="model">account.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="Écritures en Devises" create="false" edit="false">
+                <field name="date"/>
+                <field name="move_id" string="Pièce Comptable"/>
+                <field name="journal_id" optional="hide"/>
+                <field name="partner_id" string="Partenaire"/>
+                <field name="account_id" string="Compte"/>
+                <field name="amount_currency" string="Montant en Devise" sum="Total Devise"/>
+                <field name="currency_id" string="Devise"/>
+                <field name="debit" string="Débit" sum="Total Débit"/>
+                <field name="credit" string="Crédit" sum="Total Crédit"/>
+                <field name="balance" string="Solde" sum="Total Solde"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- UI Action: Écritures en Devises -->
+    <record id="action_compta_ecritures_devises" model="ir.actions.act_window">
+        <field name="name">Écritures en Devises Étrangères</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="view_id" ref="view_compta_move_line_currency_tree"/>
+        <field name="domain">[('currency_id', '!=', False), ('currency_id.name', '!=', 'MAD')]</field> <!-- Par défaut on exclut le dirham si MAD est la monnaie de base -->
+        <field name="context">{'search_default_posted': 1, 'search_default_groupby_currency': 1}</field>
+    </record>
+</odoo>

@@ -208,4 +208,35 @@ if records:
           <p>Importez un relevé bancaire via "Importer un Relevé (CSV / OFX / MT940)".</p>
         </field>
     </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.2.4 — MULTI-DEVISES : Réglages
+         Ajoute dans Comptabilité › Configuration › Paramètres la case
+         « Mise à jour auto des taux » + le fournisseur de taux + le bouton
+         de mise à jour manuelle. (Bloc TVA omis : déjà fourni par 3.1.5.)
+         ══════════════════════════════════════════════════════════════════ -->
+    <record id="res_config_settings_view_form_compta_maroc" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.compta.maroc</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="100"/>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='account_vendor_bills']" position="after">
+                <block title="Mode Multi-Devises (Odoo Maroc)" id="compta_maroc_settings_currency">
+                    <setting string="Gestion des Taux de Change (Devises)" help="Télécharger les taux de change automatiquement chaque jour (FloatRates).">
+                        <field name="auto_currency_update"/>
+                        <div class="content-group" invisible="not auto_currency_update">
+                            <div class="mt16">
+                                <label for="currency_provider" class="o_light_label"/>
+                                <field name="currency_provider" class="oe_inline" required="auto_currency_update"/>
+                            </div>
+                            <div class="mt8">
+                                <button name="action_update_currency_rates_config" icon="fa-refresh" type="object" string="Mettre à jour maintenant (Manuel)" class="btn-primary"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
 </odoo>

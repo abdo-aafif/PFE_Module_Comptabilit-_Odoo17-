@@ -18,8 +18,6 @@ class ResCompany(models.Model):
     currency_provider = fields.Selection(
         [
             ("floatrates", "FloatRates (Gratuit)"),
-            ("ecb", "European Central Bank"),
-            ("bam", "Bank Al-Maghrib (Manuel/Proxy)"),
         ],
         string="Fournisseur de Taux",
         default="floatrates",

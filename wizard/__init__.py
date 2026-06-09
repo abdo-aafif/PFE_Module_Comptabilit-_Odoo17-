@@ -17,6 +17,9 @@ Section 3.2.3 du CDC : Clôture Comptable
 Section 3.2.1 du CDC : États Financiers
   • financial_statements_wizard  : Wizard Bilan / CPC / Flux de Trésorerie (PCGE marocain)
   • custom_report_result_wizard  : Wizard d'exécution des rapports personnalisés
+
+Section 3.2.4 du CDC : Multi-devises
+  • currency_revaluation_wizard  : Écarts de conversion fin de période (OD automatique)
 """
 
 from . import bank_statement_import_wizard
@@ -26,3 +29,4 @@ from . import asset_disposal_wizard
 from . import period_close_wizard
 from . import financial_statements_wizard
 from . import custom_report_result_wizard
+from . import currency_revaluation_wizard
