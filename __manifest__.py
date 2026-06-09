@@ -17,9 +17,9 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.8.0',
+    'version': '17.0.1.9.0',
     'category': 'Accounting',
-    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Immobilisations + Clôture Comptable + États Financiers (Bilan, CPC, Flux, Report Builder)',
+    'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Immobilisations + Clôture Comptable + États Financiers + Multi-devises (écarts de conversion, taux auto/manuel)',
     'description': """
 Module de comptabilité pour Odoo 17 Community — PUSH 4
 =========================================================
@@ -81,6 +81,11 @@ Section 3.2.1 du CDC : États Financiers
   • Compte de Produits et Charges (CPC) — 7 rubriques, résultat net
   • Tableau de Flux de Trésorerie (méthode indirecte : exploitation / investissement / financement)
   • États financiers personnalisables (report builder : lignes par préfixes de comptes + formules)
+
+Section 3.2.4 du CDC : Multi-devises
+  • Gestion des écritures en devises étrangères (vue dédiée account.move.line)
+  • Écarts de conversion automatiques (wizard de réévaluation fin de période → OD)
+  • Taux de change : mise à jour manuelle ou automatique (cron quotidien, fournisseur FloatRates)
     """,
     'author': 'Custom',
     'license': 'LGPL-3',
@@ -116,6 +121,8 @@ Section 3.2.1 du CDC : États Financiers
     'data': [
         'security/ir.model.access.csv',
         'data/journal_data.xml',
+        # 3.2.4 Multi-devises : cron de mise à jour automatique des taux de change
+        'data/multicurrency_data.xml',
         'security/compta_security.xml',
         'views/account_analytic_views.xml',
         'views/compta_overrides.xml',
@@ -137,6 +144,8 @@ Section 3.2.1 du CDC : États Financiers
         # 3.2.1 États Financiers (Bilan / CPC / Flux + report builder)
         'views/financial_statements_views.xml',
         'reports/financial_statements_report.xml',
+        # 3.2.4 Multi-devises (wizard réévaluation + vue écritures en devises)
+        'wizard/currency_revaluation_wizard_views.xml',
         'views/menus.xml',
     ],
 
