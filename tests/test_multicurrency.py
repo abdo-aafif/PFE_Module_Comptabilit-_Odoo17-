@@ -32,6 +32,12 @@ class TestMultiCurrency(TransactionCase):
             'rounding': 0.01,
         })
         Rate = cls.env['res.currency.rate']
+        # Ancre la devise société à 1.0 pour neutraliser tout taux issu
+        # des données de démo (ex. MAD/EUR dans cicd_D).
+        Rate.create({
+            'currency_id': cls.company_currency.id, 'name': '2024-12-31',
+            'rate': 1.0, 'company_id': cls.company.id,
+        })
         Rate.create({
             'currency_id': cls.foreign.id, 'name': '2025-01-01',
             'rate': 2.0, 'company_id': cls.company.id,
@@ -44,18 +50,18 @@ class TestMultiCurrency(TransactionCase):
         # ── Comptes dédiés au test ────────────────────────────────────────────
         Account = cls.env['account.account']
         cls.acc_recv = Account.create({
-            'code': 'TFX_RECV', 'name': 'Clients devise (test)',
+            'code': 'TFXRECV', 'name': 'Clients devise (test)',
             'account_type': 'asset_receivable', 'reconcile': True,
         })
         cls.acc_income = Account.create({
-            'code': 'TFX_INC', 'name': 'Ventes (test)', 'account_type': 'income',
+            'code': 'TFXINC', 'name': 'Ventes (test)', 'account_type': 'income',
         })
         cls.acc_gain = Account.create({
-            'code': 'TFX_GAIN', 'name': 'Gain de change (test)',
+            'code': 'TFXGAIN', 'name': 'Gain de change (test)',
             'account_type': 'income_other',
         })
         cls.acc_loss = Account.create({
-            'code': 'TFX_LOSS', 'name': 'Perte de change (test)',
+            'code': 'TFXLOSS', 'name': 'Perte de change (test)',
             'account_type': 'expense',
         })
 
