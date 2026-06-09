@@ -111,7 +111,7 @@ class TestMultiCurrency(TransactionCase):
     def test_invoice_booked_in_foreign_currency(self):
         """Sanity check : la créance vaut 500 en devise société au taux d'émission."""
         recv_line = self.invoice.line_ids.filtered(
-            lambda l: l.account_id.account_type == 'asset_receivable'
+            lambda ml: ml.account_id.account_type == "asset_receivable"
         )
         self.assertEqual(recv_line.amount_residual_currency, 1000.0)
         self.assertAlmostEqual(recv_line.amount_residual, 500.0, places=2)
@@ -129,8 +129,8 @@ class TestMultiCurrency(TransactionCase):
     def test_revaluation_loss_amounts(self):
         wizard = self._make_wizard()
         move = self.env['account.move'].browse(wizard.action_revaluate()['res_id'])
-        recv_line = move.line_ids.filtered(lambda l: l.account_id == self.acc_recv)
-        loss_line = move.line_ids.filtered(lambda l: l.account_id == self.acc_loss)
+        recv_line = move.line_ids.filtered(lambda ml: ml.account_id == self.acc_recv)
+        loss_line = move.line_ids.filtered(lambda ml: ml.account_id == self.acc_loss)
         # Créance dépréciée 500 → 250 : on crédite la créance de 250...
         self.assertAlmostEqual(recv_line.credit, 250.0, places=2)
         # ...en contrepartie d'une charge (perte de change) de 250.

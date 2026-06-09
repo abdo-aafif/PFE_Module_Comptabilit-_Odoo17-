@@ -18,7 +18,6 @@ class ResCompany(models.Model):
     currency_provider = fields.Selection(
         [
             ("floatrates", "FloatRates (Gratuit)"),
-            
         ],
         string="Fournisseur de Taux",
         default="floatrates",
