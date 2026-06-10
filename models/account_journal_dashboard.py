@@ -28,10 +28,10 @@ class AccountJournalPfe(models.Model):
             ])
 
             echu = sum(
-                l.jour_0_30 + l.jour_30_60 + l.jour_60_90 + l.jour_plus_90
-                for l in balance_lines
+                bal.jour_0_30 + bal.jour_30_60 + bal.jour_60_90 + bal.jour_plus_90
+                for bal in balance_lines
             )
-            non_echu = sum(l.non_echu for l in balance_lines)
+            non_echu = sum(bal.non_echu for bal in balance_lines)
 
             dashboard_data[journal.id].update({
                 "pfe_echu_fmt": currency.format(echu) if echu else None,
