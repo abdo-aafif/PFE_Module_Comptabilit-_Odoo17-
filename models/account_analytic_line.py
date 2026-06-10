@@ -55,6 +55,18 @@ class AccountAnalyticLine(models.Model):
         "le groupement unifié dans le Suivi Analytique.",
     )
 
+    compta_plan_id = fields.Many2one(
+        "account.analytic.plan",
+        string="Plan / Axe",
+        compute="_compute_compta_plan_id",
+        store=True,  # Stocké : requis pour le groupement SQL et le tri natif
+        index=True,  # Indexé : accélère les filtres et group_by dans le reporting
+        help="Plan analytique (axe d'analyse) auquel appartient le compte "
+        "analytique unifié. Permet d'afficher et de regrouper les lignes "
+        "par axe (Projets, Départements, Centres de coûts, ...) dans le "
+        "Suivi Analytique, en remplacement d'une colonne par plan.",
+    )
+
     # -------------------------------------------------------------------------
     # Méthodes calculées (@api.depends)
     # -------------------------------------------------------------------------
@@ -106,3 +118,21 @@ class AccountAnalyticLine(models.Model):
                     account = line[col]
                     break
             line.compta_account_id = account
+
+    @api.depends("compta_account_id")
+    def _compute_compta_plan_id(self):
+        """Déduit le plan analytique (axe) du compte analytique unifié.
+
+        Le champ suit ``compta_account_id`` : dès que ce dernier est
+        recalculé (création / modification d'une ligne analytique), le plan
+        associé — ``plan_id`` du compte analytique — est rafraîchi.
+
+        Stocké et indexé pour permettre le tri et le regroupement SQL par
+        axe dans la vue « Suivi Analytique » (colonne « Plan / Axe »), sans
+        dépendre des colonnes dynamiques injectées par plan.
+
+        :return: Aucune valeur retournée — affecte directement
+                 ``self.compta_plan_id`` pour chaque enregistrement.
+        """
+        for line in self:
+            line.compta_plan_id = line.compta_account_id.plan_id

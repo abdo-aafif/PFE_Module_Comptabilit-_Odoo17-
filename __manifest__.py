@@ -17,7 +17,7 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.9.0',
+    'version': '17.0.1.10.0',
     'category': 'Accounting',
     'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Immobilisations + Clôture Comptable + États Financiers + Multi-devises (écarts de conversion, taux auto/manuel)',
     'description': """
