@@ -47,3 +47,7 @@ from . import account_period_close
 # ``custom.report.result.wizard`` sont dans ``wizard/`` conformément à la
 # convention OCA / pylint-odoo C8113).
 from . import custom_report_builder
+
+# Amélioration dashboard natif account : balance âgée (échu / non-échu)
+# sur les cartes kanban des journaux Ventes et Achats.
+from . import account_journal_dashboard

@@ -17,7 +17,7 @@
 # =============================================================================
 {
     'name': 'comptabilité Omega Soft',
-    'version': '17.0.1.10.0',
+    'version': '17.0.1.11.0',
     'category': 'Accounting',
     'summary': 'PCGE marocain + Analytique + Écritures + Journaux + Gestion Bancaire + Déclarations Fiscales (SIMPL-TVA) + Reporting de Base + Immobilisations + Clôture Comptable + États Financiers + Multi-devises (écarts de conversion, taux auto/manuel)',
     'description': """
@@ -124,6 +124,8 @@ Section 3.2.4 du CDC : Multi-devises
         # 3.2.4 Multi-devises : cron de mise à jour automatique des taux de change
         'data/multicurrency_data.xml',
         'security/compta_security.xml',
+        # Utilisateurs de test (3 personas) — ⚠ À DÉSACTIVER en production
+        'data/demo_users.xml',
         'views/account_analytic_views.xml',
         'views/compta_overrides.xml',
         'views/account_recurring_views.xml',
@@ -135,6 +137,8 @@ Section 3.2.4 du CDC : Multi-devises
         'views/account_tva_declaration_views.xml',
         # 3.1.6 Reporting de Base (Balance, Grand Livre, Balance Âgée, Centralisateur)
         'views/compta_custom_reports_views.xml',
+        # Amélioration dashboard account : balance âgée sur cartes Ventes/Achats
+        'views/account_journal_dashboard_inherit.xml',
         # 3.2.2 Gestion des Immobilisations (fiches, amortissements, cession/rebut)
         'views/account_asset_views.xml',
         'reports/asset_report.xml',

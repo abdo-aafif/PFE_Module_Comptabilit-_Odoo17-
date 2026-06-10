@@ -98,11 +98,12 @@
         <field name="arch" type="xml">
             <tree string="Balance Âgée" create="false" edit="false" delete="false">
                 <field name="partner_id"/>
+                <field name="total" sum="Total dû" decoration-bf="1"/>
+                <field name="non_echu" sum="Total"/>
                 <field name="jour_0_30" sum="Total"/>
                 <field name="jour_30_60" sum="Total"/>
                 <field name="jour_60_90" sum="Total"/>
                 <field name="jour_plus_90" sum="Total"/>
-                <field name="total" sum="Total" decoration-bf="1"/>
                 <field name="currency_id" column_invisible="1"/>
             </tree>
         </field>

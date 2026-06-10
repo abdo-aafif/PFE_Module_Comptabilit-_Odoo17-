@@ -132,11 +132,12 @@ class ComptaBalanceAgee(models.Model):
     account_id = fields.Many2one("account.account")
     company_id = fields.Many2one("res.company", string="Société")
 
-    jour_0_30 = fields.Monetary("0-30 jours", currency_field="currency_id")
-    jour_30_60 = fields.Monetary("30-60 jours", currency_field="currency_id")
-    jour_60_90 = fields.Monetary("60-90 jours", currency_field="currency_id")
+    non_echu = fields.Monetary("Non échu", currency_field="currency_id")
+    jour_0_30 = fields.Monetary("1-30 jours", currency_field="currency_id")
+    jour_30_60 = fields.Monetary("31-60 jours", currency_field="currency_id")
+    jour_60_90 = fields.Monetary("61-90 jours", currency_field="currency_id")
     jour_plus_90 = fields.Monetary("+90 jours", currency_field="currency_id")
-    total = fields.Monetary("Total", currency_field="currency_id")
+    total = fields.Monetary("Total dû", currency_field="currency_id")
     currency_id = fields.Many2one("res.currency")
 
     def init(self):
@@ -148,9 +149,10 @@ class ComptaBalanceAgee(models.Model):
                     l.partner_id,
                     l.account_id,
                     l.company_id,
-                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 30 THEN ABS(l.amount_residual) ELSE 0 END) as jour_0_30,
-                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) > 30 AND (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 60 THEN ABS(l.amount_residual) ELSE 0 END) as jour_30_60,
-                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) > 60 AND (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 90 THEN ABS(l.amount_residual) ELSE 0 END) as jour_60_90,
+                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 0  THEN ABS(l.amount_residual) ELSE 0 END) as non_echu,
+                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) > 0  AND (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 30  THEN ABS(l.amount_residual) ELSE 0 END) as jour_0_30,
+                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) > 30 AND (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 60  THEN ABS(l.amount_residual) ELSE 0 END) as jour_30_60,
+                    SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) > 60 AND (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) <= 90  THEN ABS(l.amount_residual) ELSE 0 END) as jour_60_90,
                     SUM(CASE WHEN (CURRENT_DATE - COALESCE(l.date_maturity, l.date)) > 90 THEN ABS(l.amount_residual) ELSE 0 END) as jour_plus_90,
                     SUM(ABS(l.amount_residual)) as total,
                     l.company_currency_id as currency_id
@@ -158,6 +160,7 @@ class ComptaBalanceAgee(models.Model):
                 JOIN account_move m ON l.move_id = m.id
                 JOIN account_account a ON l.account_id = a.id
                 WHERE m.state = 'posted'
+                  AND m.move_type IN ('out_invoice', 'in_invoice')
                   AND l.reconciled = False
                   AND l.amount_residual != 0
                   AND a.account_type IN ('asset_receivable', 'liability_payable')

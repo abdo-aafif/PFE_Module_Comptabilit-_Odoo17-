@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!--
+        Amélioration du dashboard natif account :
+        Ajoute 2 lignes "Balance Âgée" (Échu / Non échu) en bas
+        de la colonne droite de chaque carte journal Ventes / Achats.
+    -->
+    <record id="view_journal_dashboard_pfe_inherit" model="ir.ui.view">
+        <field name="name">account.journal.dashboard.pfe.inherit</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.account_journal_dashboard_kanban_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//t[@t-name='JournalBodySalePurchase']//div[contains(@class,'o_kanban_primary_right')]"
+                   position="inside">
+                <t t-if="dashboard.pfe_echu_fmt or dashboard.pfe_non_echu_fmt">
+                    <!-- séparateur visuel -->
+                    <div class="row mt-2 pt-1" style="border-top:1px dashed #dee2e6">
+                        <div class="col-12">
+                            <small class="text-muted fw-semibold">Balance Âgée</small>
+                        </div>
+                    </div>
+                    <!-- Montant échu (rouge) -->
+                    <div class="row" t-if="dashboard.pfe_echu_fmt">
+                        <div class="col overflow-hidden text-start">
+                            <small class="text-danger">⚠ Échu</small>
+                        </div>
+                        <div class="col-auto text-end">
+                            <small class="o_kanban_monetary text-danger fw-semibold">
+                                <t t-out="dashboard.pfe_echu_fmt"/>
+                            </small>
+                        </div>
+                    </div>
+                    <!-- Montant non encore dû (vert) -->
+                    <div class="row" t-if="dashboard.pfe_non_echu_fmt">
+                        <div class="col overflow-hidden text-start">
+                            <small class="text-success">✓ Non échu</small>
+                        </div>
+                        <div class="col-auto text-end">
+                            <small class="o_kanban_monetary text-success">
+                                <t t-out="dashboard.pfe_non_echu_fmt"/>
+                            </small>
+                        </div>
+                    </div>
+                </t>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

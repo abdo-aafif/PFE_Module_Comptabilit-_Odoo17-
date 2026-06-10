@@ -4,7 +4,7 @@
     <menuitem id="menu_comptabilite_maroc_root"
               name="Comptabilité"
               sequence="10"
-              groups="account.group_account_user,account.group_account_manager"
+              groups="account.group_account_user,account.group_account_manager,account.group_account_readonly"
               web_icon="account,static/description/icon.png"/>
 
     <!-- 2. Tableau de bord -->
