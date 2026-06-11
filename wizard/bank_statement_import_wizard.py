@@ -35,6 +35,12 @@ class BankStatementImportWizard(models.TransientModel):
         default="csv",
     )
 
+    statement_name = fields.Char(
+        string="Nom du relevé",
+        required=True,
+        help="Sera utilisé comme référence du relevé bancaire créé : Import — [nom] — date",
+    )
+
     # Options CSV
     csv_delimiter = fields.Char(string="Séparateur", default=";")
     csv_date_format = fields.Char(string="Format date", default="%d/%m/%Y")
@@ -347,11 +353,21 @@ class BankStatementImportWizard(models.TransientModel):
         if not parsed:
             raise UserError(_("Aucune ligne valide trouvée dans le fichier."))
 
+        dates = [vals["date"] for vals in parsed]
+        statement = self.env["account.bank.statement"].create({
+            "name": _("Import — %(label)s — %(date)s",
+                      label=self.statement_name,
+                      date=fields.Date.today()),
+            "journal_id": self.journal_id.id,
+            "date": max(dates),
+        })
+
         StmtLine = self.env["account.bank.statement.line"]
         created = StmtLine
 
         for vals in parsed:
             vals["journal_id"] = self.journal_id.id
+            vals["statement_id"] = statement.id
             created |= StmtLine.create(vals)
 
         return created

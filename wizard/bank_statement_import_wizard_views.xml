@@ -6,6 +6,11 @@
         <field name="model">bank.statement.import.wizard</field>
         <field name="arch" type="xml">
             <form string="Import Relevé Bancaire">
+                <group string="Identification du relevé">
+                    <field name="statement_name"
+                           placeholder="Ex: Janvier 2026, Relevé CIH mars..."/>
+                </group>
+
                 <group string="Paramètres généraux">
                     <field name="journal_id"/>
                     <field name="file_format"/>
