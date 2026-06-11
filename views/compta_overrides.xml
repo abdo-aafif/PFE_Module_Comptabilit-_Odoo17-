@@ -231,6 +231,72 @@ if records:
     </record>
 
     <!-- ══════════════════════════════════════════════════════════════════
+         SECTION 3.2.4 — MULTI-DEVISES : Historiques
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Historique 1 : Taux de change (res.currency.rate) -->
+    <record id="view_compta_currency_rate_tree" model="ir.ui.view">
+        <field name="name">compta.res.currency.rate.tree</field>
+        <field name="model">res.currency.rate</field>
+        <field name="arch" type="xml">
+            <tree string="Historique des Taux de Change"
+                  default_order="name desc">
+                <field name="name" string="Date"/>
+                <field name="currency_id" string="Devise"/>
+                <field name="rate" string="Taux (1 devise société = X devise)"/>
+                <field name="inverse_company_rate"
+                       string="Taux inverse (1 devise étrangère = X MAD)"
+                       optional="show"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_compta_historique_taux_change" model="ir.actions.act_window">
+        <field name="name">Historique des Taux de Change</field>
+        <field name="res_model">res.currency.rate</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_compta_currency_rate_tree"/>
+        <field name="context">{'search_default_group_by_currency_id': 1}</field>
+    </record>
+
+    <!-- Historique 2 : Réévaluations des écarts de conversion -->
+    <record id="view_compta_reevaluation_history_tree" model="ir.ui.view">
+        <field name="name">compta.reevaluation.history.tree</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <tree string="Historique des Réévaluations"
+                  default_order="date desc"
+                  create="false" delete="false">
+                <field name="date" string="Date d'évaluation"/>
+                <field name="name" string="N° OD"/>
+                <field name="journal_id" string="Journal"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"
+                       optional="show"/>
+                <field name="state" string="Statut"
+                       decoration-success="state == 'posted'"
+                       decoration-warning="state == 'draft'"/>
+                <field name="amount_total" string="Montant total écart" sum="Total"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_compta_historique_reevaluation" model="ir.actions.act_window">
+        <field name="name">Historique des Réévaluations</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_compta_reevaluation_history_tree"/>
+        <field name="domain">[
+            ('ref', 'ilike', 'Évaluation Fin de Période'),
+            ('move_type', '=', 'entry'),
+        ]</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
          SECTION 3.2.4 — MULTI-DEVISES : Réglages
          Ajoute dans Comptabilité › Configuration › Paramètres la case
          « Mise à jour auto des taux » + le fournisseur de taux + le bouton

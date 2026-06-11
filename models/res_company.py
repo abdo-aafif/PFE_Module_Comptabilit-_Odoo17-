@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 import requests
 import logging
@@ -24,9 +25,9 @@ class ResCompany(models.Model):
     )
 
     def action_update_currency_rates(self):
-        """Fetch exchange rates from public API (FloatRates for MAD or Base Currency)"""
+        """Fetch exchange rates from FloatRates for all active currencies."""
         for company in self:
-            if not company.auto_currency_update or company.currency_provider != "floatrates":
+            if company.currency_provider != "floatrates":
                 continue
 
             base_currency = company.currency_id.name.lower()
@@ -34,56 +35,81 @@ class ResCompany(models.Model):
 
             try:
                 response = requests.get(url, timeout=10)
-                if response.status_code == 200:
-                    data = response.json()
-                    today = fields.Date.context_today(self)
-                    active_currencies = self.env["res.currency"].search(
-                        [("active", "=", True), ("id", "!=", company.currency_id.id)]
-                    )
+                response.raise_for_status()
+            except requests.exceptions.ConnectionError:
+                raise UserError(_(
+                    "Impossible de contacter FloatRates. "
+                    "Vérifiez la connexion Internet du serveur Odoo."
+                ))
+            except requests.exceptions.Timeout:
+                raise UserError(_(
+                    "La requête FloatRates a expiré (timeout 10 s). "
+                    "Réessayez dans quelques instants."
+                ))
+            except requests.exceptions.HTTPError as exc:
+                raise UserError(_(
+                    "FloatRates a retourné une erreur HTTP : %(err)s", err=str(exc)
+                ))
 
-                    # Odoo affiche : "Unité par MAD" = raw_stored / raw_MAD
-                    # FloatRates donne : 1 MAD = api_rate devises étrangères
-                    # Pour que l'affichage soit correct : raw_stored = api_rate * raw_MAD
-                    # company.currency_id.rate vaut toujours 1.0 (normalisé sur lui-même),
-                    # on récupère donc le taux brut réel stocké en base via _get_rates.
-                    raw_base_rates = company.currency_id._get_rates(company, today)
-                    raw_base = raw_base_rates.get(company.currency_id.id, 1.0)
+            data = response.json()
+            today = fields.Date.context_today(self)
+            active_currencies = self.env["res.currency"].search(
+                [("active", "=", True), ("id", "!=", company.currency_id.id)]
+            )
 
-                    for currency in active_currencies:
-                        curr_code = currency.name.lower()
-                        if curr_code in data:
-                            # FloatRates : 1 MAD = api_rate unités de devise étrangère
-                            api_rate = data[curr_code]["rate"]
+            # Odoo normalise : "Unité par MAD" affiché = rate_brut / rate_brut_MAD
+            # Il faut donc multiplier l'api_rate par le rate brut du MAD
+            # pour que le résultat affiché soit correct.
+            mad_rate_obj = self.env["res.currency.rate"].search(
+                [
+                    ("currency_id", "=", company.currency_id.id),
+                    ("company_id", "=", company.id),
+                    ("name", "<=", today),
+                ],
+                order="name desc",
+                limit=1,
+            )
+            mad_raw = mad_rate_obj.rate if mad_rate_obj else 1.0
 
-                            # Taux à stocker en base pour qu'Odoo affiche la bonne valeur
-                            db_rate = api_rate * raw_base
+            updated = 0
 
-                            existing_rate = self.env["res.currency.rate"].search(
-                                [
-                                    ("currency_id", "=", currency.id),
-                                    ("name", "=", today),
-                                    ("company_id", "=", company.id),
-                                ],
-                                limit=1,
-                            )
+            for currency in active_currencies:
+                curr_code = currency.name.lower()
+                if curr_code not in data:
+                    continue
 
-                            if not existing_rate:
-                                self.env["res.currency.rate"].create(
-                                    {
-                                        "currency_id": currency.id,
-                                        "name": today,
-                                        "rate": db_rate,
-                                        "company_id": company.id,
-                                    }
-                                )
-                            else:
-                                existing_rate.write({"rate": db_rate})
+                # FloatRates (base MAD) : 1 MAD = api_rate unités de devise étrangère
+                # db_rate = api_rate * mad_raw  →  affiché = db_rate / mad_raw = api_rate ✓
+                api_rate = float(data[curr_code]["rate"])
+                db_rate = api_rate * mad_raw
 
-                            _logger.info(
-                                f"Updated rate for {currency.name}: api_rate={api_rate}, raw_base={raw_base}, db_rate={db_rate}"
-                            )
-            except Exception as e:
-                _logger.error(f"Failed to update currency rates for {company.name}: {str(e)}")
+                existing_rate = self.env["res.currency.rate"].search(
+                    [
+                        ("currency_id", "=", currency.id),
+                        ("name", "=", today),
+                        ("company_id", "=", company.id),
+                    ],
+                    limit=1,
+                )
+                if existing_rate:
+                    existing_rate.write({"rate": db_rate})
+                else:
+                    self.env["res.currency.rate"].create({
+                        "currency_id": currency.id,
+                        "name": today,
+                        "rate": db_rate,
+                        "company_id": company.id,
+                    })
+                updated += 1
+                _logger.info(
+                    "Rate updated — %s: api=%.6f mad_raw=%.6f db=%.6f",
+                    currency.name, api_rate, mad_raw, db_rate,
+                )
+
+            _logger.info(
+                "FloatRates update done for %s: %d currencies updated.",
+                company.name, updated,
+            )
 
     @api.model
     def _cron_update_currency_rates(self):
@@ -124,15 +150,21 @@ class ResConfigSettings(models.TransientModel):
     # au moment du parsing XML.
 
     def action_update_currency_rates_config(self):
-        # Utilisons un nom très spécifique juste pour les settings
+        """Bouton manuel dans Configuration > Paramètres.
+        Fonctionne même si auto_currency_update est désactivé.
+        Propage les erreurs réseau à l'utilisateur via UserError.
+        """
         self.ensure_one()
+        # Forcer currency_provider pour que la méthode ne saute pas la société
+        if not self.company_id.currency_provider:
+            raise UserError(_("Aucun fournisseur de taux configuré."))
         self.company_id.action_update_currency_rates()
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": "Mise à jour réussie",
-                "message": "Les taux de change ont été mis à jour.",
+                "title": _("Taux mis à jour"),
+                "message": _("Les taux FloatRates ont été mis à jour pour aujourd'hui."),
                 "type": "success",
                 "sticky": False,
             },

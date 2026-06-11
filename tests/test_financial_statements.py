@@ -226,6 +226,10 @@ class TestBilan(_FinancialTestCommon):
 
     def test_equation_actif_egale_passif(self):
         """Capital 100k + résultat 30k = banque 130k (actif = passif)."""
+        wiz0 = self._make_wizard()
+        wiz0.action_compute_bilan()
+        actif0 = self._find_amount(wiz0.bilan_line_ids, "TOTAL ACTIF") or 0.0
+
         self._inject_capital(date(2030, 1, 1), 100000.0)
         self._make_revenue(date(2030, 6, 15), 50000.0)
         self._make_expense(date(2030, 7, 20), 20000.0)
@@ -234,15 +238,19 @@ class TestBilan(_FinancialTestCommon):
         total_actif = self._find_amount(wiz.bilan_line_ids, "TOTAL ACTIF")
         total_passif = self._find_amount(wiz.bilan_line_ids, "TOTAL PASSIF")
         self.assertAlmostEqual(total_actif, total_passif, places=2)
-        self.assertAlmostEqual(total_actif, 130000.0, places=2)
+        self.assertAlmostEqual(total_actif - actif0, 130000.0, places=2)
 
     def test_banque_dans_tresorerie_actif(self):
         """Le solde banque (514Z) apparaît dans la trésorerie actif."""
+        wiz0 = self._make_wizard()
+        wiz0.action_compute_bilan()
+        tres0 = self._find_amount(wiz0.bilan_line_ids, "Total Trésorerie - Actif") or 0.0
+
         self._inject_capital(date(2030, 1, 1), 80000.0)
         wiz = self._make_wizard()
         wiz.action_compute_bilan()
         total_tres = self._find_amount(wiz.bilan_line_ids, "Total Trésorerie - Actif")
-        self.assertAlmostEqual(total_tres, 80000.0, places=2)
+        self.assertAlmostEqual(total_tres - tres0, 80000.0, places=2)
 
     def test_capital_dans_financement_permanent(self):
         """Le capital social (111Z) apparaît dans les capitaux propres."""
@@ -263,12 +271,16 @@ class TestBilan(_FinancialTestCommon):
 
     def test_client_dans_actif_circulant(self):
         """Créance client (342Z) apparaît dans l'actif circulant."""
+        wiz0 = self._make_wizard()
+        wiz0.action_compute_bilan()
+        creances0 = self._find_amount(wiz0.bilan_line_ids, "Créances de l'actif circulant (net)") or 0.0
+
         # Vente à crédit : débit client / crédit produit
         self._make_move(date(2030, 6, 1), self.account_client, self.account_vente, 7000.0)
         wiz = self._make_wizard()
         wiz.action_compute_bilan()
         creances = self._find_amount(wiz.bilan_line_ids, "Créances de l'actif circulant (net)")
-        self.assertAlmostEqual(creances, 7000.0, places=2)
+        self.assertAlmostEqual(creances - creances0, 7000.0, places=2)
 
     def test_immobilisation_dans_actif_immobilise(self):
         """L'immobilisation (231Z) apparaît dans l'actif immobilisé corporel."""
@@ -281,13 +293,17 @@ class TestBilan(_FinancialTestCommon):
 
     def test_resultat_exercice_calcule(self):
         """Le résultat de l'exercice apparaît côté passif (capitaux propres)."""
+        wiz0 = self._make_wizard()
+        wiz0.action_compute_bilan()
+        resultat0 = self._find_amount(wiz0.bilan_line_ids, "Résultat net de l'exercice (±)") or 0.0
+
         self._inject_capital(date(2030, 1, 1), 100000.0)
         self._make_revenue(date(2030, 6, 1), 50000.0)
         self._make_expense(date(2030, 6, 20), 20000.0)
         wiz = self._make_wizard()
         wiz.action_compute_bilan()
         resultat = self._find_amount(wiz.bilan_line_ids, "Résultat net de l'exercice (±)")
-        self.assertAlmostEqual(resultat, 30000.0, places=2)
+        self.assertAlmostEqual(resultat - resultat0, 30000.0, places=2)
 
 
 # =============================================================================
@@ -359,21 +375,29 @@ class TestFluxTresorerie(_FinancialTestCommon):
 
     def test_tresorerie_debut_periode(self):
         """La trésorerie début reflète le solde banque avant la période."""
+        wiz0 = self._make_wizard(date_from=date(2030, 1, 1), date_to=date(2030, 12, 31))
+        wiz0.action_compute_flux()
+        tresor0 = self._find_amount(wiz0.flux_line_ids, "Trésorerie nette – début de période") or 0.0
+
         self._inject_capital(date(2029, 12, 1), 100000.0)
         wiz = self._make_wizard(date_from=date(2030, 1, 1), date_to=date(2030, 12, 31))
         wiz.action_compute_flux()
         tresor_debut = self._find_amount(wiz.flux_line_ids, "Trésorerie nette – début de période")
-        self.assertAlmostEqual(tresor_debut, 100000.0, places=2)
+        self.assertAlmostEqual(tresor_debut - tresor0, 100000.0, places=2)
 
     def test_tresorerie_fin_periode(self):
         """Trésorerie fin = début + variation totale."""
+        wiz0 = self._make_wizard(date_from=date(2030, 1, 1), date_to=date(2030, 12, 31))
+        wiz0.action_compute_flux()
+        tresor_fin0 = self._find_amount(wiz0.flux_line_ids, "Trésorerie nette – fin de période") or 0.0
+
         self._inject_capital(date(2029, 12, 1), 100000.0)
         self._make_revenue(date(2030, 6, 15), 50000.0)
         self._make_expense(date(2030, 7, 20), 20000.0)
         wiz = self._make_wizard(date_from=date(2030, 1, 1), date_to=date(2030, 12, 31))
         wiz.action_compute_flux()
         tresor_fin = self._find_amount(wiz.flux_line_ids, "Trésorerie nette – fin de période")
-        self.assertAlmostEqual(tresor_fin, 130000.0, places=2)
+        self.assertAlmostEqual(tresor_fin - tresor_fin0, 130000.0, places=2)
 
     def test_flux_exploitation_inclut_resultat_net(self):
         """Le flux d'exploitation contient le résultat net de la période."""
@@ -473,6 +497,13 @@ class TestCustomReportBuilder(_FinancialTestCommon):
 
     def test_compute_account_line_cumul(self):
         """Ligne account avec balance_type=cumul cumule depuis l'origine."""
+        # Baseline avant injection
+        report0 = self._create_report()
+        self._add_line(report0, name="Banque cumul", code="BANK", account_prefixes="514", sign="1", balance_type="cumul")
+        wiz0 = self._make_result_wizard(report0)
+        wiz0.action_compute()
+        baseline = wiz0.result_ids[0].amount if wiz0.result_ids else 0.0
+
         # Apport en 2029 (avant période du wizard)
         self._inject_capital(date(2029, 6, 1), 100000.0)
         report = self._create_report()
@@ -487,7 +518,7 @@ class TestCustomReportBuilder(_FinancialTestCommon):
         wiz = self._make_result_wizard(report)
         wiz.action_compute()
         # cumul → inclut l'apport de 2029 même si hors période
-        self.assertAlmostEqual(wiz.result_ids[0].amount, 100000.0, places=2)
+        self.assertAlmostEqual(wiz.result_ids[0].amount - baseline, 100000.0, places=2)
 
     # ── Type 'formula' : safe_eval avec codes de lignes ───────────────────
     def test_compute_formula_line_uses_codes(self):

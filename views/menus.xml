@@ -366,4 +366,10 @@
               action="action_compta_currency_revaluation_wizard"
               sequence="3"/>
 
+    <menuitem id="menu_compta_historique_reevaluation"
+              name="Historique des Réévaluations"
+              parent="menu_compta_multi_currency"
+              action="pfe.action_compta_historique_reevaluation"
+              sequence="5"/>
+
 </odoo>

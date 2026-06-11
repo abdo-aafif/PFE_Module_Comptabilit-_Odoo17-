@@ -325,6 +325,7 @@ class TestBankStatementImport(_BankTestCommon):
             "import_file": _b64(content),
             "filename": f"test.{file_format}",
             "file_format": file_format,
+            "statement_name": f"Test Import {file_format.upper()}",
         }
         vals.update(extra)
         return self.env["bank.statement.import.wizard"].create(vals)
