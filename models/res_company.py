@@ -117,6 +117,40 @@ class ResCompany(models.Model):
         companies = self.search([("auto_currency_update", "=", True)])
         companies.action_update_currency_rates()
 
+    @api.model
+    def _ensure_journals_a_nouveau(self):
+        """Garantit la présence du Journal des à-nouveaux (code AN) par société.
+
+        Idempotente et multi-sociétés. Appelée :
+          * à l'installation     → par le ``post_init_hook`` (hooks.py) ;
+          * à chaque mise à jour → par une balise ``<function>`` dans
+            ``data/journal_data.xml`` (car ``post_init_hook`` NE se rejoue PAS sur ``-u``).
+
+        Comportement : si le journal AN existe déjà pour la société, ne fait rien
+        (et le réactive s'il était archivé) ; sinon, le crée.
+        """
+        Journal = self.env["account.journal"]
+        for company in self.env["res.company"].search([]):
+            # active_test=False : détecte aussi un journal AN *archivé*, ce qui évite
+            # de retomber sur la contrainte d'unicité (code, société) en re-créant.
+            existing = Journal.with_context(active_test=False).search([
+                ("code", "=", "AN"),
+                ("company_id", "=", company.id),
+            ], limit=1)
+            if existing:
+                if not existing.active:
+                    existing.active = True
+                    _logger.info("Journal AN réactivé pour la société %s", company.name)
+                continue
+            Journal.with_company(company).create({
+                "name": "Journal des à-nouveaux",
+                "code": "AN",
+                "type": "general",
+                "show_on_dashboard": True,
+                "company_id": company.id,
+            })
+            _logger.info("Journal AN créé pour la société %s", company.name)
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"

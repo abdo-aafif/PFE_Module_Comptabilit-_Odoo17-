@@ -48,6 +48,13 @@ class BankStatementImportWizard(models.TransientModel):
     csv_col_label = fields.Integer(string="Colonne Libellé", default=2)
     csv_col_amount = fields.Integer(string="Colonne Montant", default=3)
     csv_col_ref = fields.Integer(string="Colonne Référence", default=4)
+    csv_col_partner = fields.Integer(
+        string="Colonne Partenaire (optionnel)",
+        default=0,
+        help="Numéro de colonne contenant le nom du partenaire. "
+             "Mettre 0 (défaut) pour ignorer — le partenaire sera alors "
+             "déduit automatiquement depuis la facture lors du Perfect Match.",
+    )
     csv_skip_header = fields.Boolean(string="Ignorer en-tête", default=True)
 
     # ------------------------------------------------------------------ #
@@ -113,6 +120,8 @@ class BankStatementImportWizard(models.TransientModel):
         label = col(self.csv_col_label)
         amount_str = col(self.csv_col_amount).replace(" ", "").replace(",", ".")
         ref = col(self.csv_col_ref)
+        # Colonne partenaire optionnelle (0 = désactivée)
+        partner_name = col(self.csv_col_partner) if self.csv_col_partner else ""
 
         if not date_str or not amount_str:
             return None
@@ -144,6 +153,7 @@ class BankStatementImportWizard(models.TransientModel):
             "payment_ref": label or ref or "/",
             "amount": amount,
             "narration": ref if ref != label else False,
+            "_partner_name": partner_name,  # champ temporaire résolu dans _create_lines
         }
 
     # ------------------------------------------------------------------ #
@@ -366,8 +376,142 @@ class BankStatementImportWizard(models.TransientModel):
         created = StmtLine
 
         for vals in parsed:
+            # Résoudre le partenaire depuis le nom (colonne optionnelle du CSV)
+            partner_name = vals.pop("_partner_name", "")
+            if partner_name:
+                partner = self.env["res.partner"].search(
+                    [("name", "ilike", partner_name), ("active", "=", True)],
+                    limit=1,
+                )
+                if partner:
+                    vals["partner_id"] = partner.id
             vals["journal_id"] = self.journal_id.id
             vals["statement_id"] = statement.id
             created |= StmtLine.create(vals)
 
+        # Déclencher les modèles de rapprochement automatique (Perfect Match, etc.)
+        # Les règles avec auto_reconcile=True sont appliquées immédiatement après l'import
+        # sans attendre que l'utilisateur ouvre le widget de rapprochement bancaire.
+        self._trigger_auto_reconciliation(created)
+
         return created
+
+    def _trigger_auto_reconciliation(self, st_lines):
+        """Perfect Match automatique après import.
+
+        En Odoo 17 Community, les modèles de rapprochement sont appliqués par le
+        widget JavaScript — il n'existe pas de méthode Python _apply_rules().
+        On reproduit ici la logique de bank.reconciliation.wizard._do_match() :
+        pour chaque ligne importée, on cherche une facture dont le montant ET la
+        référence correspondent exactement, et on réconcilie automatiquement.
+        Ne s'active que si au moins une règle invoice_matching avec auto_reconcile=True
+        est configurée pour la société.
+        """
+        if not st_lines:
+            return
+        has_auto_rule = self.env["account.reconcile.model"].search_count([
+            ("auto_reconcile", "=", True),
+            ("rule_type", "=", "invoice_matching"),
+            ("company_id", "=", self.journal_id.company_id.id),
+        ])
+        if not has_auto_rule:
+            return
+        for st_line in st_lines:
+            if not st_line.is_reconciled:
+                self._try_perfect_match(st_line)
+
+    def _try_perfect_match(self, st_line):
+        """Tente de réconcilier automatiquement une ligne de relevé avec une facture.
+
+        Critères du Perfect Match :
+          1. Montant résiduel identique (tolérance 0,01)
+          2. payment_ref contient la référence ou le nom de la facture
+        Si un seul candidat remplit les deux critères, la réconciliation est appliquée.
+        """
+        payment_ref = (st_line.payment_ref or "").strip()
+        if not payment_ref:
+            return
+
+        amount = st_line.amount
+        domain = [
+            ("reconciled", "=", False),
+            ("parent_state", "=", "posted"),
+            ("account_id.reconcile", "=", True),
+            ("move_id.move_type", "in", ["out_invoice", "in_invoice", "out_refund", "in_refund"]),
+            ("company_id", "=", st_line.company_id.id),
+        ]
+        domain.append(("balance", ">", 0) if amount > 0 else ("balance", "<", 0))
+
+        candidates = self.env["account.move.line"].search(domain, limit=200)
+
+        # Filtre 1 : montant exact (résiduel)
+        amount_abs = abs(amount)
+        by_amount = candidates.filtered(
+            lambda ln: abs(abs(ln.amount_residual) - amount_abs) < 0.01
+        )
+        if not by_amount:
+            return
+
+        # Filtre 2 : référence (payment_ref dans nom/ref de la facture, ou l'inverse)
+        by_ref = by_amount.filtered(
+            lambda ln: payment_ref in (ln.move_id.name or "")
+            or payment_ref in (ln.move_id.payment_reference or "")
+            or payment_ref in (ln.ref or "")
+            or (ln.move_id.name or "") in payment_ref
+        )
+        if len(by_ref) != 1:
+            # Ambiguïté ou pas de match → on laisse l'utilisateur décider
+            return
+
+        target_line = by_ref[0]
+
+        try:
+            # Si la ligne bancaire n'a pas de partenaire (CSV sans colonne Partenaire),
+            # on le déduit depuis la facture matchée → satisfait "Partenaire est défini"
+            if not st_line.partner_id and target_line.partner_id:
+                st_line.partner_id = target_line.partner_id
+
+            move = st_line.move_id
+            if not move:
+                return
+            if move.state == "posted":
+                move.button_draft()
+
+            # Remplacer le compte suspens par le compte de la facture
+            suspense_account = st_line.journal_id.suspense_account_id
+            if suspense_account:
+                suspense_lines = move.line_ids.filtered(
+                    lambda ln: ln.account_id == suspense_account
+                )
+            else:
+                bank_account = st_line.journal_id.default_account_id
+                suspense_lines = move.line_ids.filtered(
+                    lambda ln: ln.account_id != bank_account
+                )
+
+            if not suspense_lines:
+                return
+
+            suspense_lines.write({
+                "account_id": target_line.account_id.id,
+                "name": payment_ref or "/",
+            })
+            move.action_post()
+
+            # Réconciliation des deux lignes sur le même compte
+            updated = move.line_ids.filtered(
+                lambda ln: ln.account_id == target_line.account_id and not ln.reconciled
+            )[:1]
+            if updated and not target_line.reconciled:
+                (updated | target_line).reconcile()
+                _logger.info(
+                    "Perfect Match : transaction %s réconciliée automatiquement "
+                    "avec la facture %s",
+                    st_line.payment_ref,
+                    target_line.move_id.name,
+                )
+        except Exception as exc:
+            _logger.warning(
+                "Perfect Match échoué pour la ligne '%s' : %s",
+                st_line.payment_ref, exc
+            )

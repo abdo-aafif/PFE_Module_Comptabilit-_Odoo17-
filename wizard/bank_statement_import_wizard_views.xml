@@ -30,15 +30,25 @@
                         <field name="csv_col_label"/>
                         <field name="csv_col_amount"/>
                         <field name="csv_col_ref"/>
+                        <field name="csv_col_partner"/>
                     </group>
                 </group>
 
                 <!-- Aide format CSV -->
                 <div invisible="file_format != 'csv'" class="alert alert-info" role="alert">
-                    <strong>Format CSV attendu (séparateur « ; » par défaut) :</strong><br/>
+                    <strong>Format CSV — sans colonne Partenaire (Colonne Partenaire = 0) :</strong><br/>
                     <code>Date;Libellé;Montant;Référence</code><br/>
-                    <code>01/01/2026;Initial balance;5103.00;SOL2026</code><br/>
-                    <code>01/01/2026;Azure Interior;-1275.00;INV/2026/00002</code>
+                    <code>11/06/2026;FAC/2026/00008;2340,00;FAC/2026/00008</code><br/>
+                    <br/>
+                    <strong>Format CSV — avec colonne Partenaire (Colonne Partenaire = 5) :</strong><br/>
+                    <code>Date;Libellé;Montant;Référence;Partenaire</code><br/>
+                    <code>11/06/2026;FAC/2026/00008;2340,00;FAC/2026/00008;Azure Interior</code><br/>
+                    <br/>
+                    <span class="text-muted">
+                        ℹ️ Si la colonne Partenaire est absente (= 0), le partenaire est déduit
+                        automatiquement depuis la facture lors du rapprochement Perfect Match.
+                        La règle <b>« Partenaire est défini »</b> sera satisfaite dans les deux cas.
+                    </span>
                 </div>
 
                 <!-- Aide format OFX -->

@@ -1,8 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
-        <!-- Le journal des à-nouveaux est créé via post_init_hook
-             pour éviter les conflits avec un journal AN déjà existant.
-             Voir hooks.py : _create_journal_a_nouveau() -->
-    </data>
+    <!--
+        Journal des à-nouveaux (code AN) — absent du module Community de base.
+
+        La création est centralisée dans res.company._ensure_journals_a_nouveau()
+        (idempotente, multi-sociétés, réactive un éventuel journal AN archivé).
+
+        Déclenchée :
+          * à l'installation     -> par le post_init_hook (hooks.py) ;
+          * à CHAQUE mise à jour -> par la <function> ci-dessous.
+
+        ATTENTION : la <function> est volontairement HORS de tout bloc
+        <data noupdate="1"> ; un bloc noupdate ne se rejoue PAS sur un -u,
+        or on veut justement qu'elle se rejoue à chaque mise à jour pour
+        garantir la présence du journal.
+    -->
+    <function model="res.company" name="_ensure_journals_a_nouveau"/>
 </odoo>

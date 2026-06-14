@@ -24,6 +24,12 @@
               parent="menu_compta_ventes"
               action="account.action_move_out_invoice_type"
               sequence="1"/>
+    <!-- Avoirs clients (notes de crédit out_refund) — pour lettrage sans banque -->
+    <menuitem id="menu_compta_avoirs_clients"
+              name="Avoirs Clients"
+              parent="menu_compta_ventes"
+              action="account.action_move_out_refund_type"
+              sequence="2"/>
 
     <!-- 4. Achats (accès rapide aux factures fournisseurs) -->
     <menuitem id="menu_compta_achats"
@@ -35,6 +41,12 @@
               parent="menu_compta_achats"
               action="account.action_move_in_invoice_type"
               sequence="1"/>
+    <!-- Notes de crédit fournisseurs (avoirs in_refund) — pour lettrage sans banque -->
+    <menuitem id="menu_compta_notes_credit_fournisseurs"
+              name="Notes de crédit (Avoirs Fournisseurs)"
+              parent="menu_compta_achats"
+              action="account.action_move_in_refund_type"
+              sequence="2"/>
 
      <!-- 3. Menu Comptabilité (Saisie) — section 3.1.2 du CDC -->
     <menuitem id="menu_compta_accounting"

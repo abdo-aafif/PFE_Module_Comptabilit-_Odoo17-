@@ -58,14 +58,19 @@ class AccountRecurring(models.Model):
     def action_generate_move(self):
         for rec in self:
             if rec.state == "running" and rec.move_id:
-                rec.move_id.copy(
-                    {
-                        "date": rec.date_next,
-                        "recurring_id": rec.id,
-                        "ref": f"{rec.name} (Généré) - {rec.date_next}",
-                        "auto_post": "no",  # La laisser en brouillon pour vérification
-                    }
-                )
+                vals = {
+                    "date": rec.date_next,
+                    "recurring_id": rec.id,
+                    "ref": f"{rec.name} (Généré) - {rec.date_next}",
+                    "auto_post": "no",  # La laisser en brouillon pour vérification
+                }
+                # Pièces de type facture (client/fournisseur) : renseigner la date
+                # de facture. Sinon la validation d'une facture fournisseur lève une
+                # UserError, car ``invoice_date`` est ``copy=False`` et obligatoire
+                # pour les pièces d'achat (cf. account.move._post).
+                if rec.move_id.is_invoice(include_receipts=True):
+                    vals["invoice_date"] = rec.date_next
+                rec.move_id.copy(vals)
 
                 if rec.interval_type == "days":
                     rec.date_next = rec.date_next + relativedelta(days=rec.interval_number)

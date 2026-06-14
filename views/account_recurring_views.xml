@@ -24,9 +24,9 @@
         <field name="arch" type="xml">
             <form string="Écriture Récurrente">
                 <header>
-                    <button name="action_start" type="object" string="Démarrer l'abonnement" state="draft" class="oe_highlight"/>
-                    <button name="action_generate_move" type="object" string="Générer l'écriture manuellement" state="running" class="btn-primary"/>
-                    <button name="action_stop" type="object" string="Arrêter" state="running"/>
+                    <button name="action_start" type="object" string="Démarrer l'abonnement" invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_generate_move" type="object" string="Générer l'écriture manuellement" invisible="state != 'running'" class="btn-primary"/>
+                    <button name="action_stop" type="object" string="Arrêter" invisible="state != 'running'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,running,done"/>
                 </header>
                 <sheet>
