@@ -3,14 +3,14 @@ access_account_recurring_user,account.recurring.user,model_account_recurring,,1,
 access_bank_statement_import_wizard,bank.statement.import.wizard,model_bank_statement_import_wizard,,1,1,1,1
 access_bank_reconciliation_wizard,bank.reconciliation.wizard,model_bank_reconciliation_wizard,,1,1,1,1
 access_compta_currency_revaluation_wizard,compta.currency.revaluation.wizard,model_compta_currency_revaluation_wizard,,1,1,1,1
-access_simpl_tva_wizard,simpl.tva.wizard,model_simpl_tva_wizard,,1,1,1,1
 access_account_tva_declaration,account.tva.declaration,model_account_tva_declaration,,1,1,1,1
 access_account_tva_declaration_line,account.tva.declaration.line,model_account_tva_declaration_line,,1,1,1,1
 access_account_tva_declaration_detail,account.tva.declaration.detail,model_account_tva_declaration_detail,,1,1,1,1
 access_compta_balance_generale,compta.balance.generale,model_compta_balance_generale,,1,0,0,0
 access_compta_grand_livre,compta.grand.livre,model_compta_grand_livre,,1,0,0,0
 access_compta_balance_agee,compta.balance.agee,model_compta_balance_agee,,1,0,0,0
-access_compta_journal_centralisateur,compta.journal.centralisateur,model_compta_journal_centralisateur,,1,0,0,0
+access_compta_centralisateur,compta.centralisateur,model_compta_centralisateur,,1,1,1,1
+access_compta_centralisateur_line,compta.centralisateur.line,model_compta_centralisateur_line,,1,1,1,1
 access_account_asset_category,account.asset.category,model_account_asset_category,,1,1,1,1
 access_account_asset,account.asset,model_account_asset,,1,1,1,1
 access_account_asset_depreciation_line,account.asset.depreciation.line,model_account_asset_depreciation_line,,1,1,1,1

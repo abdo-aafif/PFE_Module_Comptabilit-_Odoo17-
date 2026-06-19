@@ -20,7 +20,7 @@
         <field name="name">account.tva.declaration.form</field>
         <field name="model">account.tva.declaration</field>
         <field name="arch" type="xml">
-            <form string="Déclaration TVA">
+            <form string="Déclaration TVA" create="false">
                 <header>
                     <button name="action_compute_tva" string="Calculer la TVA (selon Encaissement)" type="object"
                             class="btn-primary" invisible="state != 'draft'" icon="fa-calculator"/>

@@ -6,7 +6,7 @@ Section 3.1.4 du CDC : Gestion Bancaire
   • bank_reconciliation_wizard   : Rapprochement bancaire (imputation directe + association)
 
 Section 3.1.5 du CDC : Déclarations Fiscales
-  • simpl_tva_wizard             : Export EDI XML SIMPL-TVA (DGI Maroc)
+  (Export SIMPL-TVA intégré directement dans account.tva.declaration)
 
 Section 3.2.2 du CDC : Gestion des Immobilisations
   • asset_disposal_wizard        : Cession / mise au rebut d'une immobilisation
@@ -24,7 +24,6 @@ Section 3.2.4 du CDC : Multi-devises
 
 from . import bank_statement_import_wizard
 from . import bank_reconciliation_wizard
-from . import simpl_tva_wizard
 from . import asset_disposal_wizard
 from . import period_close_wizard
 from . import financial_statements_wizard

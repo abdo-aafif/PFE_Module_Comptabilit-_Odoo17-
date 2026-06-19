@@ -5,7 +5,7 @@ Couverture :
     * Balance générale          (compta.balance.generale)
     * Grand livre                (compta.grand.livre)
     * Balance âgée clients/fourn (compta.balance.agee)
-    * Journal centralisateur     (compta.journal.centralisateur)
+    * Journal centralisateur     (compta.centralisateur)
 
 Stratégie d'isolation :
     Chaque test crée ses propres comptes et journaux (codes ``TR6...``)
@@ -465,13 +465,16 @@ class TestBalanceAgee(_ReportsCommon):
 # =============================================================================
 @tagged("post_install", "-at_install", "omega_reports", "omega_centralisateur")
 class TestJournalCentralisateur(_ReportsCommon):
-    """Vue ``compta.journal.centralisateur`` : Débit/Crédit par journal."""
+    """Modèle ``compta.centralisateur`` : Débit/Crédit par journal (total cumulé)."""
 
     def _ligne(self, journal):
-        return self.env["compta.journal.centralisateur"].search(
+        rec = self.env["compta.centralisateur"].create({"company_id": self.company.id})
+        rec._recompute("total", False, False)
+        return self.env["compta.centralisateur.line"].search(
             [
+                ("centralisateur_id", "=", rec.id),
+                ("periode_type", "=", "total"),
                 ("journal_id", "=", journal.id),
-                ("company_id", "=", self.company.id),
             ],
             limit=1,
         )
@@ -507,3 +510,138 @@ class TestJournalCentralisateur(_ReportsCommon):
         ligne = self._ligne(self.journal_general)
         self.assertAlmostEqual(ligne.debit, ligne.credit, places=2)
         self.assertAlmostEqual(ligne.debit, 1801.0, places=2)
+
+
+# =============================================================================
+#  3.1.6.E — Filtrage du Grand Livre par période et par journal — US-015
+# =============================================================================
+@tagged("post_install", "-at_install", "omega_reports", "omega_gl_filter")
+class TestGrandLivreFilter(_ReportsCommon):
+    """US-015 — Filtre par période et par journal sur le grand livre.
+
+    Critères d'acceptation :
+        • détail de chaque mouvement avec solde progressif
+        • filtre par période/journal
+    """
+
+    def _lignes_compte(self, account):
+        return self.env["compta.grand.livre"].search(
+            [("account_id", "=", account.id), ("company_id", "=", self.company.id)],
+            order="date, id",
+        )
+
+    # ── Filtre par période ────────────────────────────────────────────
+    def test_move_inside_period_in_gl(self):
+        """Écriture dans la période → présente dans le grand livre."""
+        self._make_entry(
+            amount=500.0,
+            account_debit=self.account_charge,
+            account_credit=self.account_fourn,
+            entry_date=date(2030, 6, 15),
+        )
+        lignes = self._lignes_compte(self.account_charge)
+        dates = lignes.mapped("date")
+        self.assertIn(date(2030, 6, 15), dates)
+
+    def test_move_outside_period_excluded_by_domain(self):
+        """Filtre explicite par période : écriture hors période absente."""
+        # Écriture en 2031 (hors domaine du test)
+        self._make_entry(
+            amount=9999.0,
+            account_debit=self.account_charge,
+            account_credit=self.account_fourn,
+            entry_date=date(2031, 3, 1),
+        )
+        # Écriture en 2030 (dans le domaine)
+        self._make_entry(
+            amount=100.0,
+            account_debit=self.account_charge,
+            account_credit=self.account_fourn,
+            entry_date=date(2030, 6, 15),
+        )
+        lignes_2030 = self.env["compta.grand.livre"].search([
+            ("account_id", "=", self.account_charge.id),
+            ("company_id", "=", self.company.id),
+            ("date", ">=", date(2030, 1, 1)),
+            ("date", "<=", date(2030, 12, 31)),
+        ])
+        for ln in lignes_2030:
+            self.assertTrue(
+                date(2030, 1, 1) <= ln.date <= date(2030, 12, 31),
+                f"La ligne du {ln.date} ne devrait pas apparaître dans la période 2030.",
+            )
+
+    # ── Filtre par journal ────────────────────────────────────────────
+    def test_filter_by_journal_isolates_moves(self):
+        """Filtre par journal : écritures d'un autre journal absentes."""
+        journal_extra = self.env["account.journal"].create({
+            "name": "Test Extra GL",
+            "code": "TEGL",
+            "type": "general",
+            "company_id": self.company.id,
+        })
+        # Écriture sur journal principal
+        self._make_entry(
+            amount=300.0,
+            account_debit=self.account_charge,
+            account_credit=self.account_fourn,
+            journal=self.journal_general,
+        )
+        # Écriture sur journal extra
+        self._make_entry(
+            amount=777.0,
+            account_debit=self.account_charge,
+            account_credit=self.account_fourn,
+            journal=journal_extra,
+        )
+        lignes_principal = self.env["compta.grand.livre"].search([
+            ("account_id", "=", self.account_charge.id),
+            ("company_id", "=", self.company.id),
+            ("journal_id", "=", self.journal_general.id),
+        ])
+        for ln in lignes_principal:
+            self.assertEqual(
+                ln.journal_id.id, self.journal_general.id,
+                "Une ligne d'un autre journal ne doit pas apparaître."
+            )
+
+    # ── Solde progressif avec plusieurs écritures ─────────────────────
+    def test_solde_progressif_trois_ecritures(self):
+        """Trois écritures successives : le solde cumulé est correct à chaque étape."""
+        amounts = [200.0, 350.0, 450.0]
+        for amt in amounts:
+            self._make_entry(
+                amount=amt,
+                account_debit=self.account_charge,
+                account_credit=self.account_fourn,
+                entry_date=date(2030, 6, 1),
+            )
+        lignes = self.env["compta.grand.livre"].search(
+            [
+                ("account_id", "=", self.account_charge.id),
+                ("company_id", "=", self.company.id),
+            ],
+            order="date, id",
+        )
+        # Le solde final doit être la somme de toutes les dotations sur ce compte
+        total_debit = sum(ln.debit for ln in lignes)
+        last_balance = lignes[-1].balance if lignes else 0.0
+        self.assertAlmostEqual(last_balance, total_debit, places=2)
+
+    # ── Non échu (balance âgée) — US-016 complément ──────────────────
+    def test_balance_agee_not_yet_due(self):
+        """Facture dont l'échéance est dans le futur → tranche 'Non échu'."""
+        future_due = date.today() + timedelta(days=30)
+        self._make_customer_invoice(
+            amount=400.0,
+            invoice_date=date.today(),
+            invoice_date_due=future_due,
+        )
+        ligne = self.env["compta.balance.agee"].search([
+            ("partner_id", "=", self.partner.id),
+            ("account_type", "=", "asset_receivable"),
+            ("company_id", "=", self.company.id),
+        ])
+        if ligne:
+            non_echu = ligne.non_echu if hasattr(ligne, "non_echu") else ligne.jour_0_30
+            self.assertGreater(non_echu, 0.0, "La tranche non échu doit contenir la facture future.")

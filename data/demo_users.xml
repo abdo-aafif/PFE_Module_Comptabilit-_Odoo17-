@@ -37,6 +37,9 @@
     <record id="user_demo_comptable" model="res.users">
         <field name="name">Comptable (Démo — Persona 1)</field>
         <field name="login">comptable@test.ma</field>
+        <!-- email requis : sans lui, message_post (chatter clôture/immo…) lève
+             « adresse expéditeur non configurée » et annule l'opération. -->
+        <field name="email">comptable@test.ma</field>
         <field name="password">admin</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="company_ids" eval="[(6, 0, [ref('base.main_company')])]"/>
@@ -53,6 +56,7 @@
     <record id="user_demo_daf" model="res.users">
         <field name="name">DAF (Démo — Persona 2)</field>
         <field name="login">daf@test.ma</field>
+        <field name="email">daf@test.ma</field>
         <field name="password">admin</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="company_ids" eval="[(6, 0, [ref('base.main_company')])]"/>
@@ -69,6 +73,7 @@
     <record id="user_demo_admin" model="res.users">
         <field name="name">Admin Intégrateur (Démo — Persona 3)</field>
         <field name="login">admin@test.ma</field>
+        <field name="email">admin@test.ma</field>
         <field name="password">admin</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="company_ids" eval="[(6, 0, [ref('base.main_company')])]"/>

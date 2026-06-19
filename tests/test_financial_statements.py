@@ -426,9 +426,11 @@ class TestFluxTresorerie(_FinancialTestCommon):
         self._make_acquisition_immo(date(2030, 3, 1), 10000.0)
         wiz = self._make_wizard()
         wiz.action_compute_flux()
-        flux_a = self._find_amount(wiz.flux_line_ids, "FLUX NET D'EXPLOITATION  (A)")
-        flux_b = self._find_amount(wiz.flux_line_ids, "FLUX NET D'INVESTISSEMENT  (B)")
-        flux_c = self._find_amount(wiz.flux_line_ids, "FLUX NET DE FINANCEMENT  (C)")
+        # Les sous-totaux A/B/C sont désormais portés par les en-têtes de section
+        # (cf. _get_flux_lines : plus de lignes « FLUX NET … » redondantes).
+        flux_a = self._find_amount(wiz.flux_line_ids, "A.  FLUX DE TRÉSORERIE LIÉ À L'ACTIVITÉ")
+        flux_b = self._find_amount(wiz.flux_line_ids, "B.  FLUX DE TRÉSORERIE LIÉ AUX INVESTISSEMENTS")
+        flux_c = self._find_amount(wiz.flux_line_ids, "C.  FLUX DE TRÉSORERIE LIÉ AU FINANCEMENT")
         var = self._find_amount(wiz.flux_line_ids, "VARIATION NETTE DE TRÉSORERIE  (A+B+C)")
         self.assertAlmostEqual(var, flux_a + flux_b + flux_c, places=2)
 

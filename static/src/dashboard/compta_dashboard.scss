@@ -5,7 +5,12 @@
 .o_compta_dashboard {
     padding: 20px 24px;
     background: #f4f6f9;
-    min-height: 100%;
+    /* Occupe toute la hauteur de l'action manager et scrolle en interne
+       lorsque le contenu (KPI + 4 graphiques) dépasse la hauteur dispo.
+       `min-height` seul laissait l'élément grandir au-delà du parent,
+       qui clippait alors le bas sans afficher de barre de défilement. */
+    height: 100%;
+    overflow-y: auto;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
     /* ── HEADER ────────────────────────────────────────────── */

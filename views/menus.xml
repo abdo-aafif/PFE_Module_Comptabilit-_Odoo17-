@@ -131,7 +131,7 @@
     <menuitem id="menu_compta_reporting_centralisateur"
               name="Journal Centralisateur"
               parent="menu_compta_reporting"
-              action="action_compta_journal_centralisateur"
+              action="action_compta_centralisateur"
               sequence="5"/>
 
     <!-- Reporting Analytique (3.1.1 CDC — Tous Plans Analytiques) -->
@@ -212,12 +212,6 @@
               parent="menu_comptabilite_maroc_root"
               sequence="5"/>
 
-    <menuitem id="menu_compta_releves"
-              name="Opérations de Banque &amp; Caisse"
-              parent="menu_compta_banque"
-              action="action_compta_operations_bancaires_manuelles"
-              sequence="1"/>
-
     <menuitem id="menu_compta_import_releve"
               name="Importer un Relevé (CSV / OFX / MT940)"
               parent="menu_compta_banque"
@@ -260,11 +254,6 @@
               action="action_account_tva_declaration"
               sequence="1"/>
 
-    <menuitem id="menu_compta_fiscal_tva_xml"
-              name="Export XML (SIMPL-TVA DGI)"
-              parent="menu_compta_fiscal"
-              action="action_simpl_tva_wizard"
-              sequence="2"/>
 
     <!-- ══════════════════════════════════════════════════════════════════
          SECTION 3.2.2 — GESTION DES IMMOBILISATIONS (Menus)

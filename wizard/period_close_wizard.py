@@ -2,6 +2,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from dateutil.relativedelta import relativedelta
 from datetime import date
+import calendar
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -291,14 +292,63 @@ class PeriodCloseWizard(models.TransientModel):
             self.date_from = date(prev_year, 1, 1)
             self.date_to = date(prev_year, 12, 31)
 
+    # ── Sécurité : cohérence type de clôture ↔ bornes de période ──────────────
+
+    def _validate_period_bounds(self):
+        """Garde-fou : la période saisie doit correspondre au type de clôture.
+
+        - Mensuelle : du 1er au dernier jour (28/29/30/31) d'un même mois.
+        - Annuelle  : du 01/01 au 31/12 d'une même année civile (exercice marocain).
+
+        Empêche, par exemple, de lancer une clôture ANNUELLE sur un seul mois
+        (ou inversement une clôture MENSUELLE sur une année entière).
+        """
+        self.ensure_one()
+        df, dt = self.date_from, self.date_to
+        if not df or not dt:
+            raise UserError(_("Veuillez saisir la période avant de lancer les contrôles."))
+        if df > dt:
+            raise UserError(_("La date de début doit être antérieure à la date de fin."))
+
+        if self.close_type == "monthly":
+            last_day = calendar.monthrange(df.year, df.month)[1]
+            if df.day != 1 or dt.year != df.year or dt.month != df.month or dt.day != last_day:
+                raise UserError(
+                    _(
+                        "Clôture MENSUELLE : la période doit couvrir un mois entier.\n"
+                        "Attendu : du 01/%(m)02d/%(y)d au %(last)02d/%(m)02d/%(y)d.\n"
+                        "Saisi : du %(df)s au %(dt)s."
+                    )
+                    % {
+                        "m": df.month,
+                        "y": df.year,
+                        "last": last_day,
+                        "df": df.strftime("%d/%m/%Y"),
+                        "dt": dt.strftime("%d/%m/%Y"),
+                    }
+                )
+        else:  # annual
+            if df.day != 1 or df.month != 1 or dt.day != 31 or dt.month != 12 or dt.year != df.year:
+                raise UserError(
+                    _(
+                        "Clôture ANNUELLE : la période doit couvrir une année civile entière.\n"
+                        "Attendu : du 01/01/%(y)d au 31/12/%(y)d.\n"
+                        "Saisi : du %(df)s au %(dt)s."
+                    )
+                    % {
+                        "y": df.year,
+                        "df": df.strftime("%d/%m/%Y"),
+                        "dt": dt.strftime("%d/%m/%Y"),
+                    }
+                )
+
     # ── ÉTAPE 1 : Contrôles pré-clôture ──────────────────────────────────────
 
     def action_run_checks(self):
         self.ensure_one()
-        if not self.date_from or not self.date_to:
-            raise UserError(_("Veuillez saisir la période avant de lancer les contrôles."))
-        if self.date_from > self.date_to:
-            raise UserError(_("La date de début doit être antérieure à la date de fin."))
+        # Garde-fou : refuse de lancer les contrôles si la période ne correspond
+        # pas au type de clôture (mois entier vs année civile entière).
+        self._validate_period_bounds()
 
         company = self.company_id
 
@@ -392,6 +442,9 @@ class PeriodCloseWizard(models.TransientModel):
 
     def action_close_period(self):
         self.ensure_one()
+        # Défense en profondeur : revérifie les bornes de période avant de verrouiller
+        # (la période a pu être modifiée après le lancement des contrôles).
+        self._validate_period_bounds()
 
         if not self.checks_done:
             raise UserError(_("Veuillez d'abord lancer les contrôles pré-clôture."))

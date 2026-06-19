@@ -9,7 +9,7 @@
         <field name="model">financial.bilan.line</field>
         <field name="arch" type="xml">
             <tree string="Bilan" create="false" edit="false" delete="false"
-                  default_order="sequence">
+                  default_order="sequence" limit="200">
                 <field name="sequence"  column_invisible="1"/>
                 <field name="level"     column_invisible="1"/>
                 <field name="is_total"  column_invisible="1"/>
@@ -37,7 +37,7 @@
         <field name="model">financial.cpc.line</field>
         <field name="arch" type="xml">
             <tree string="CPC" create="false" edit="false" delete="false"
-                  default_order="sequence">
+                  default_order="sequence" limit="200">
                 <field name="sequence"  column_invisible="1"/>
                 <field name="is_total"  column_invisible="1"/>
                 <field name="bold"      column_invisible="1"/>
@@ -62,7 +62,7 @@
         <field name="model">financial.flux.line</field>
         <field name="arch" type="xml">
             <tree string="Flux de Trésorerie" create="false" edit="false" delete="false"
-                  default_order="sequence">
+                  default_order="sequence" limit="200">
                 <field name="sequence"  column_invisible="1"/>
                 <field name="is_total"  column_invisible="1"/>
                 <field name="bold"      column_invisible="1"/>
@@ -86,7 +86,14 @@
         <field name="name">financial.statement.wizard.form</field>
         <field name="model">financial.statement.wizard</field>
         <field name="arch" type="xml">
-            <form string="États Financiers">
+            <!-- create/delete=false : masque le bouton « Nouveau » et vide le CogMenu (⚙).
+                 On NE met PAS edit="false" : cela bascule l'enregistrement en lecture seule
+                 dès le 1er calcul (record sauvegardé) → dates non modifiables + troncature
+                 « 01/... » du champ date. L'indicateur de sauvegarde (☁/↩) est masqué via
+                 la classe o_financial_statement_form (cf. financial_statement_form.scss),
+                 posée sur la racine .o_form_view par computeViewClassName. -->
+            <form string="États Financiers" create="false" delete="false"
+                  class="o_financial_statement_form">
                 <sheet>
                     <!-- Parameters bar -->
                     <group string="Paramètres" col="4">

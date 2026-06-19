@@ -1,0 +1,16 @@
+/* ─────────────────────────────────────────────────────────────────
+   Vue formulaire « États Financiers » (financial.statement.wizard)
+   ─────────────────────────────────────────────────────────────────
+   Masque l'indicateur de sauvegarde/annulation (☁ / ↩) du control panel.
+
+   On ne peut pas utiliser edit="false" pour le faire : cela basculerait
+   l'enregistrement transient en lecture seule après le premier calcul
+   (dates non modifiables + troncature du champ date). À la place, la
+   classe `o_financial_statement_form` — déclarée via class="…" sur le
+   <form> — est fusionnée par computeViewClassName dans la className de la
+   racine .o_form_view ; on cible donc l'indicateur en tant que descendant. */
+.o_financial_statement_form {
+    .o_form_status_indicator {
+        display: none !important;
+    }
+}

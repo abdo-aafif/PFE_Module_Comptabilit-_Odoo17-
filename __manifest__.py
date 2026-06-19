@@ -133,7 +133,6 @@ Section 3.2.4 du CDC : Multi-devises
         'wizard/bank_statement_import_wizard_views.xml',
         'wizard/bank_reconciliation_wizard_views.xml',
         # 3.1.5 Déclarations Fiscales (TVA + SIMPL-TVA)
-        'wizard/simpl_tva_wizard_views.xml',
         'views/account_tva_declaration_views.xml',
         # 3.1.6 Reporting de Base (Balance, Grand Livre, Balance Âgée, Centralisateur)
         'views/compta_custom_reports_views.xml',
@@ -161,6 +160,8 @@ Section 3.2.4 du CDC : Multi-devises
             'pfe/static/src/dashboard/compta_dashboard.js',
             'pfe/static/src/dashboard/compta_dashboard.xml',
             'pfe/static/src/dashboard/compta_dashboard.scss',
+            # Vue formulaire États Financiers : masque l'indicateur ☁/↩
+            'pfe/static/src/views/financial_statement_form.scss',
         ],
     },
 

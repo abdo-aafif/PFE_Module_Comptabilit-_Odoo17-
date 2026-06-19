@@ -91,7 +91,12 @@ class FinancialStatementWizard(models.TransientModel):
         domain=[("section", "=", "passif")],
     )
 
+    @api.depends("company_id")
     def _compute_display_name(self):
+        # @api.depends sur un champ ayant une valeur par défaut : le calcul se
+        # déclenche dès l'initialisation du nouvel enregistrement, ce qui peuple
+        # data.display_name → le fil d'Ariane affiche « États Financiers »
+        # au lieu de « Nouveau ».
         for rec in self:
             rec.display_name = "États Financiers"
 
@@ -708,11 +713,16 @@ class FinancialStatementWizard(models.TransientModel):
         resultat_net = (prod_expl + prod_fin + prod_nc) - (ch_expl + ch_fin + ch_nc) - impots
 
         # ---- Agrégats FLUX ----
+        # Les 3 sous-totaux de flux sont portés par les en-têtes de section A/B/C
+        # (cf. _get_flux_lines, total=True). On les repère par leur préfixe
+        # « A. » / « B. » / « C. » : robuste aux changements de libellé.
         flux_lines = wiz._get_flux_lines()
-        flux_expl = next((ln["amount"] for ln in flux_lines if "FLUX NET D'EXPLOITATION" in ln["name"]), 0.0)
-        flux_inv = next((ln["amount"] for ln in flux_lines if "FLUX NET D'INVESTISSEMENT" in ln["name"]), 0.0)
-        flux_fin = next((ln["amount"] for ln in flux_lines if "FLUX NET DE FINANCEMENT" in ln["name"]), 0.0)
-        tresor_nette = tresor_a - wiz._balance_at(["552", "553", "554"], dt, cid, 1)
+        flux_expl = next((ln["amount"] for ln in flux_lines if ln["name"].startswith("A.")), 0.0)
+        flux_inv = next((ln["amount"] for ln in flux_lines if ln["name"].startswith("B.")), 0.0)
+        flux_fin = next((ln["amount"] for ln in flux_lines if ln["name"].startswith("C.")), 0.0)
+        # Trésorerie nette = Trésorerie Actif − Trésorerie Passif.
+        # tresor_p est déjà calculé en valeur positive (sign=-1) → simple soustraction.
+        tresor_nette = tresor_a - tresor_p
 
         company = self.env["res.company"].browse(cid)
         currency = company.currency_id.symbol or "MAD"
@@ -796,7 +806,9 @@ class FinancialStatementWizard(models.TransientModel):
         flux_expl = res_net + dotations - reprises + vnc_cessions - prod_cessions + bfr  # neutralisation cessions
 
         lines += [
-            L("A.  FLUX DE TRÉSORERIE LIÉ À L'ACTIVITÉ", 0, lvl=0, bold=True),
+            # Le titre de section porte directement le total net (comme le CPC) :
+            # plus de « 0,00 » trompeur ni de ligne « FLUX NET » redondante.
+            L("A.  FLUX DE TRÉSORERIE LIÉ À L'ACTIVITÉ", flux_expl, lvl=0, total=True, bold=True),
             L("Résultat net de l'exercice", res_net, lvl=1),
             L("Dotations aux amortissements et provisions", dotations, lvl=1),
             L("Reprises sur provisions", -reprises, lvl=1),
@@ -806,7 +818,6 @@ class FinancialStatementWizard(models.TransientModel):
             L("Variation des stocks", d_stocks, lvl=1),
             L("Variation des dettes fournisseurs", d_fourn, lvl=1),
             L("Variation des autres éléments du BFR", d_autres_bfr, lvl=1),
-            L("FLUX NET D'EXPLOITATION  (A)", flux_expl, lvl=0, total=True, bold=True),
         ]
 
         # ── B. Flux d'investissement ─────────────────────────────
@@ -841,10 +852,9 @@ class FinancialStatementWizard(models.TransientModel):
         flux_inv = cessions_cash - acquisitions
 
         lines += [
-            L("B.  FLUX DE TRÉSORERIE LIÉ AUX INVESTISSEMENTS", 0, lvl=0, bold=True),
+            L("B.  FLUX DE TRÉSORERIE LIÉ AUX INVESTISSEMENTS", flux_inv, lvl=0, total=True, bold=True),
             L("Acquisitions d'immobilisations", -acquisitions, lvl=1),
             L("Produits de cession d'immobilisations", cessions_cash, lvl=1),
-            L("FLUX NET D'INVESTISSEMENT  (B)", flux_inv, lvl=0, total=True, bold=True),
         ]
 
         # ── C. Flux de financement ───────────────────────────────
@@ -858,12 +868,11 @@ class FinancialStatementWizard(models.TransientModel):
         flux_fin = d_cap + d_subv + d_dettes - dividendes
 
         lines += [
-            L("C.  FLUX DE TRÉSORERIE LIÉ AU FINANCEMENT", 0, lvl=0, bold=True),
+            L("C.  FLUX DE TRÉSORERIE LIÉ AU FINANCEMENT", flux_fin, lvl=0, total=True, bold=True),
             L("Augmentations de capital", d_cap, lvl=1),
             L("Subventions d'investissement reçues", d_subv, lvl=1),
             L("Emprunts et dettes de financement", d_dettes, lvl=1),
             L("Dividendes versés", -dividendes, lvl=1),
-            L("FLUX NET DE FINANCEMENT  (C)", flux_fin, lvl=0, total=True, bold=True),
         ]
 
         # ── Variation nette de trésorerie ────────────────────────

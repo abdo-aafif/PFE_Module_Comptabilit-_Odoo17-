@@ -7,8 +7,8 @@
     <record id="seq_period_close_monthly" model="ir.sequence">
         <field name="name">Clôture Mensuelle</field>
         <field name="code">account.period.close.monthly</field>
-        <field name="prefix">CLOTURE-MENS-%(year)s-</field>
-        <field name="padding">2</field>
+        <field name="prefix">CLOTURE-MENS-</field>
+        <field name="padding">4</field>
         <field name="company_id" eval="False"/>
     </record>
 

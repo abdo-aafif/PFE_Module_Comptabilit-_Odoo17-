@@ -311,6 +311,10 @@ if records:
         <field name="priority" eval="100"/>
         <field name="inherit_id" ref="account.res_config_settings_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//app[@name='account']" position="attributes">
+                <attribute name="string">Facturation &amp; comptabilité</attribute>
+                <attribute name="data-string">Facturation &amp; comptabilité</attribute>
+            </xpath>
             <xpath expr="//block[@id='account_vendor_bills']" position="after">
                 <block title="Mode Multi-Devises (Odoo Maroc)" id="compta_maroc_settings_currency">
                     <setting string="Gestion des Taux de Change (Devises)" help="Télécharger les taux de change automatiquement chaque jour (FloatRates).">

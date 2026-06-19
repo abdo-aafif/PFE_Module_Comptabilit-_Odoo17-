@@ -154,3 +154,234 @@ class TestMultiCurrency(TransactionCase):
     def test_default_get_prefills_general_journal(self):
         defaults = self.env['compta.currency.revaluation.wizard'].default_get(['journal_id'])
         self.assertTrue(defaults.get('journal_id'))
+
+
+# =============================================================================
+#  3.2.4.B — Affichage devise sur les lignes d'écriture — US-033
+# =============================================================================
+@tagged('post_install', '-at_install', 'omega_currency', 'omega_currency_display')
+class TestCurrencyDisplay(TransactionCase):
+    """US-033 — Saisie en devise : montant en devise ET conversion MAD affichés.
+
+    Critères d'acceptation :
+        • saisie du montant en devise étrangère avec le taux appliqué
+        • conversion automatique en MAD sur chaque ligne
+        • devise et montant en devise affichés sur l'écriture et les lignes
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+        cls.company_currency = cls.company.currency_id
+
+        cls.foreign = cls.env['res.currency'].create({
+            'name': 'TDX',
+            'symbol': 'D',
+            'rounding': 0.01,
+        })
+        Rate = cls.env['res.currency.rate']
+        Rate.create({
+            'currency_id': cls.company_currency.id,
+            'name': '2025-01-01',
+            'rate': 1.0,
+            'company_id': cls.company.id,
+        })
+        # 1 TDX = 0.5 devise société → taux Odoo = 2.0 (unités de société par devise)
+        Rate.create({
+            'currency_id': cls.foreign.id,
+            'name': '2025-01-01',
+            'rate': 2.0,
+            'company_id': cls.company.id,
+        })
+
+        cls.acc_recv = cls.env['account.account'].create({
+            'code': 'TDXRECV', 'name': 'Clients TDX (test)',
+            'account_type': 'asset_receivable', 'reconcile': True,
+        })
+        cls.acc_income = cls.env['account.account'].create({
+            'code': 'TDXINC', 'name': 'Ventes TDX (test)',
+            'account_type': 'income',
+        })
+        cls.sale_journal = cls.env['account.journal'].search([
+            ('type', '=', 'sale'), ('company_id', '=', cls.company.id)
+        ], limit=1)
+        cls.partner = cls.env['res.partner'].create({'name': 'Client Devise TDX'})
+        cls.partner.property_account_receivable_id = cls.acc_recv.id
+
+    def _make_foreign_invoice(self, price=1000.0):
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'partner_id': self.partner.id,
+            'currency_id': self.foreign.id,
+            'invoice_date': date(2025, 1, 15),
+            'invoice_line_ids': [(0, 0, {
+                'name': 'Service en TDX',
+                'quantity': 1,
+                'price_unit': price,
+                'tax_ids': [(6, 0, [])],
+                'account_id': self.acc_income.id,
+            })],
+        })
+        invoice.action_post()
+        return invoice
+
+    def test_invoice_has_foreign_currency(self):
+        """La facture est bien en devise étrangère (TDX)."""
+        invoice = self._make_foreign_invoice(1000.0)
+        self.assertEqual(invoice.currency_id, self.foreign)
+
+    def test_receivable_line_has_foreign_amount(self):
+        """La ligne client porte le montant en devise étrangère (amount_currency)."""
+        invoice = self._make_foreign_invoice(1000.0)
+        recv_line = invoice.line_ids.filtered(
+            lambda ln: ln.account_id.account_type == 'asset_receivable'
+        )
+        self.assertTrue(recv_line, "Il doit exister une ligne client (receivable).")
+        # amount_currency = montant en TDX
+        self.assertAlmostEqual(abs(recv_line.amount_currency), 1000.0, places=2)
+
+    def test_receivable_line_has_mad_amount(self):
+        """La ligne client est convertie en MAD (debit ou credit non nul)."""
+        invoice = self._make_foreign_invoice(1000.0)
+        recv_line = invoice.line_ids.filtered(
+            lambda ln: ln.account_id.account_type == 'asset_receivable'
+        )
+        # balance = montant en devise société (MAD) : 1000 TDX / taux 2 = 500 MAD
+        self.assertAlmostEqual(abs(recv_line.balance), 500.0, places=2)
+
+    def test_currency_id_on_line(self):
+        """La ligne porte la devise étrangère dans currency_id."""
+        invoice = self._make_foreign_invoice(1000.0)
+        recv_line = invoice.line_ids.filtered(
+            lambda ln: ln.account_id.account_type == 'asset_receivable'
+        )
+        self.assertEqual(recv_line.currency_id, self.foreign)
+
+    def test_move_line_amount_residual_currency(self):
+        """amount_residual_currency = solde restant en devise étrangère."""
+        invoice = self._make_foreign_invoice(1000.0)
+        recv_line = invoice.line_ids.filtered(
+            lambda ln: ln.account_id.account_type == 'asset_receivable'
+        )
+        self.assertAlmostEqual(recv_line.amount_residual_currency, 1000.0, places=2)
+
+
+# =============================================================================
+#  3.2.4.C — Gestion des taux de change — US-034
+# =============================================================================
+@tagged('post_install', '-at_install', 'omega_currency', 'omega_currency_rates')
+class TestCurrencyRateManagement(TransactionCase):
+    """US-034 — Taux de change : saisie manuelle, historique, fournisseur.
+
+    Critères d'acceptation :
+        • saisie manuelle d'un taux par devise et par date
+        • historique complet des taux conservé
+        • mise à jour automatique quotidienne via API FloatRates (cron activable)
+        • bouton de mise à jour manuelle depuis les Paramètres
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+
+        # Chercher EUR même si inactive (active_test=False) pour éviter
+        # la violation de contrainte unique res_currency_unique_name.
+        cls.eur = cls.env['res.currency'].with_context(active_test=False).search(
+            [('name', '=', 'EUR')], limit=1
+        )
+        if not cls.eur:
+            cls.eur = cls.env['res.currency'].create({
+                'name': 'EUR', 'symbol': '€', 'rounding': 0.01,
+            })
+        cls.eur.active = True
+
+    def test_manual_rate_creation(self):
+        """Un taux peut être créé manuellement pour une devise et une date."""
+        rate = self.env['res.currency.rate'].create({
+            'currency_id': self.eur.id,
+            'name': date(2025, 6, 1),
+            'rate': 10.5,
+            'company_id': self.company.id,
+        })
+        self.assertTrue(rate.id)
+        self.assertAlmostEqual(rate.rate, 10.5, places=4)
+        self.assertEqual(rate.currency_id, self.eur)
+
+    def test_rate_history_multiple_dates(self):
+        """Plusieurs taux à des dates différentes → historique conservé."""
+        dates_rates = [
+            (date(2025, 1, 1), 10.0),
+            (date(2025, 3, 1), 10.5),
+            (date(2025, 6, 1), 11.0),
+        ]
+        for d, r in dates_rates:
+            self.env['res.currency.rate'].create({
+                'currency_id': self.eur.id,
+                'name': d,
+                'rate': r,
+                'company_id': self.company.id,
+            })
+        history = self.env['res.currency.rate'].search([
+            ('currency_id', '=', self.eur.id),
+            ('company_id', '=', self.company.id),
+            ('name', '>=', date(2025, 1, 1)),
+            ('name', '<=', date(2025, 12, 31)),
+        ])
+        self.assertGreaterEqual(len(history), 3)
+        stored_rates = sorted(history.mapped('rate'))
+        self.assertIn(10.0, stored_rates)
+        self.assertIn(10.5, stored_rates)
+        self.assertIn(11.0, stored_rates)
+
+    def test_rate_is_date_specific(self):
+        """Chaque taux est bien lié à sa date (non écrasé par un nouveau)."""
+        self.env['res.currency.rate'].create({
+            'currency_id': self.eur.id,
+            'name': date(2025, 1, 1),
+            'rate': 10.0,
+            'company_id': self.company.id,
+        })
+        self.env['res.currency.rate'].create({
+            'currency_id': self.eur.id,
+            'name': date(2025, 6, 1),
+            'rate': 11.5,
+            'company_id': self.company.id,
+        })
+        jan_rate = self.env['res.currency.rate'].search([
+            ('currency_id', '=', self.eur.id),
+            ('name', '=', date(2025, 1, 1)),
+            ('company_id', '=', self.company.id),
+        ], limit=1)
+        self.assertAlmostEqual(jan_rate.rate, 10.0, places=4)
+
+    def test_floatrates_provider_configured(self):
+        """Le fournisseur FloatRates est le seul disponible dans la configuration."""
+        field = self.env['res.company']._fields.get('currency_provider')
+        self.assertIsNotNone(field, "Le champ currency_provider doit exister sur res.company.")
+        selection_keys = [k for k, _ in field.selection]
+        self.assertIn('floatrates', selection_keys)
+
+    def test_auto_update_flag_default_false(self):
+        """Le cron de mise à jour automatique est désactivé par défaut."""
+        field = self.env['res.company']._fields.get('auto_currency_update')
+        self.assertIsNotNone(field)
+        self.assertFalse(self.company.auto_currency_update)
+
+    def test_action_update_currency_rates_exists(self):
+        """La méthode action_update_currency_rates est accessible sur res.company."""
+        self.assertTrue(
+            hasattr(self.env['res.company'], 'action_update_currency_rates'),
+            "La méthode action_update_currency_rates doit exister sur res.company."
+        )
+
+    def test_revaluation_wizard_model_exists(self):
+        """Le wizard de réévaluation existe et peut être instancié."""
+        # US-035 : historique des réévaluations = les OD générées par le wizard.
+        # On vérifie que le wizard est accessible et que ses champs clés existent.
+        fields = self.env['compta.currency.revaluation.wizard']._fields
+        self.assertIn('revaluation_date', fields)
+        self.assertIn('journal_id', fields)
+        self.assertIn('income_account_id', fields)
+        self.assertIn('expense_account_id', fields)

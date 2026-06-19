@@ -536,3 +536,119 @@ class TestAccountRecurring(_ComptaTestCommon):
         rec.action_start()
         rec.action_generate_move()
         self.assertEqual(rec.generated_move_ids[0].state, "draft")
+
+
+# =============================================================================
+#  3.1.2.F — Consultation et filtrage des écritures — US-019
+# =============================================================================
+@tagged("post_install", "-at_install", "omega_compta", "omega_filter_entries")
+class TestJournalEntryFilter(_ComptaTestCommon):
+    """US-019 — Filtre des écritures par période et par état.
+
+    Critères d'acceptation : Filtre par période/état.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.journal2 = cls.env["account.journal"].create({
+            "name": "Test Journal Filtre",
+            "code": "TJF",
+            "type": "general",
+            "company_id": cls.company.id,
+        })
+
+    def _make_entry_on(self, move_date, post=True, journal=None):
+        journal = journal or self.journal
+        move = self.env["account.move"].create({
+            "move_type": "entry",
+            "journal_id": journal.id,
+            "date": move_date,
+            "ref": f"OD-{move_date}",
+            "line_ids": [
+                (0, 0, {"account_id": self.account_a.id, "name": "D", "debit": 100.0, "credit": 0.0}),
+                (0, 0, {"account_id": self.account_b.id, "name": "C", "debit": 0.0, "credit": 100.0}),
+            ],
+        })
+        if post:
+            move.action_post()
+        return move
+
+    # ── Filtre par état ───────────────────────────────────────────────
+    def test_filter_by_state_draft(self):
+        """Filtre state=draft : retourne uniquement les brouillons."""
+        self._make_entry_on(date(2025, 6, 1), post=True)
+        draft = self._make_entry_on(date(2025, 6, 2), post=False)
+        results = self.env["account.move"].search([
+            ("state", "=", "draft"),
+            ("move_type", "=", "entry"),
+            ("journal_id", "=", self.journal.id),
+        ])
+        self.assertIn(draft, results)
+        for r in results:
+            self.assertEqual(r.state, "draft")
+
+    def test_filter_by_state_posted(self):
+        """Filtre state=posted : retourne uniquement les écritures validées."""
+        posted = self._make_entry_on(date(2025, 6, 1), post=True)
+        self._make_entry_on(date(2025, 6, 2), post=False)
+        results = self.env["account.move"].search([
+            ("state", "=", "posted"),
+            ("move_type", "=", "entry"),
+            ("journal_id", "=", self.journal.id),
+            ("ref", "=like", "OD-2025%"),
+        ])
+        self.assertIn(posted, results)
+        for r in results:
+            self.assertEqual(r.state, "posted")
+
+    # ── Filtre par période ────────────────────────────────────────────
+    def test_filter_by_period_includes_within(self):
+        """Écriture dans la période jan 2025 → incluse dans le filtre."""
+        inside = self._make_entry_on(date(2025, 1, 15))
+        results = self.env["account.move"].search([
+            ("date", ">=", date(2025, 1, 1)),
+            ("date", "<=", date(2025, 1, 31)),
+            ("journal_id", "=", self.journal.id),
+        ])
+        self.assertIn(inside, results)
+
+    def test_filter_by_period_excludes_outside(self):
+        """Écriture hors période (mars 2025) → absente du filtre jan 2025."""
+        self._make_entry_on(date(2025, 3, 15))
+        results = self.env["account.move"].search([
+            ("date", ">=", date(2025, 1, 1)),
+            ("date", "<=", date(2025, 1, 31)),
+            ("journal_id", "=", self.journal.id),
+        ])
+        for r in results:
+            self.assertTrue(date(2025, 1, 1) <= r.date <= date(2025, 1, 31))
+
+    # ── Filtre par journal ────────────────────────────────────────────
+    def test_filter_by_journal_isolates_correctly(self):
+        """Filtre par journal : deux journaux → pas de fuite inter-journaux."""
+        j1_move = self._make_entry_on(date(2025, 6, 1), journal=self.journal)
+        j2_move = self._make_entry_on(date(2025, 6, 1), journal=self.journal2)
+        results_j1 = self.env["account.move"].search([
+            ("journal_id", "=", self.journal.id),
+            ("ref", "=like", "OD-2025%"),
+        ])
+        self.assertIn(j1_move, results_j1)
+        self.assertNotIn(j2_move, results_j1)
+
+    # ── Combinaison période + état ────────────────────────────────────
+    def test_filter_period_and_state_combined(self):
+        """Combinaison : brouillons de janvier 2025 uniquement."""
+        jan_draft = self._make_entry_on(date(2025, 1, 10), post=False)
+        self._make_entry_on(date(2025, 1, 15), post=True)
+        self._make_entry_on(date(2025, 3, 10), post=False)
+        results = self.env["account.move"].search([
+            ("state", "=", "draft"),
+            ("date", ">=", date(2025, 1, 1)),
+            ("date", "<=", date(2025, 1, 31)),
+            ("journal_id", "=", self.journal.id),
+        ])
+        self.assertIn(jan_draft, results)
+        for r in results:
+            self.assertEqual(r.state, "draft")
+            self.assertTrue(date(2025, 1, 1) <= r.date <= date(2025, 1, 31))
