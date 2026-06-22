@@ -14,6 +14,56 @@
         <field name="view_id" ref="account.view_move_tree"/>
     </record>
 
+    <!-- Action serveur : Lettrer les lignes sélectionnées.
+         Déclenchée par le bouton d'en-tête de la vue « Écritures à Lettrer ».
+         Pas de binding_model_id : n'apparaît PAS dans le menu « Actions » (ni ici ni ailleurs).
+         ⚠ Définie AVANT la vue qui la référence (bouton %(...)d) : à l'installation
+         d'une base vierge Odoo résout les External IDs dans l'ordre du fichier. -->
+    <record id="action_server_lettrer_lignes" model="ir.actions.server">
+        <field name="name">Lettrer les écritures sélectionnées</field>
+        <field name="model_id" ref="account.model_account_move_line"/>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    # Filtrer : uniquement lignes non lettrées sur comptes réconciliables
+    to_reconcile = records.filtered(
+        lambda l: not l.reconciled
+        and l.account_id.reconcile
+        and l.parent_state == 'posted'
+    )
+    if not to_reconcile:
+        raise UserError("Aucune ligne lettrable dans la sélection (déjà lettrées ou compte non réconciliable).")
+
+    # Vérifier qu'elles sont sur le même compte
+    accounts = to_reconcile.account_id
+    if len(accounts) != 1:
+        raise UserError(
+            "Toutes les lignes doivent être sur le MÊME compte pour être lettrées.\n"
+            "Comptes trouvés : %s" % ", ".join(accounts.mapped('display_name'))
+        )
+
+    # Vérifier équilibre débit/crédit
+    total = sum(to_reconcile.mapped('balance'))
+    if abs(total) &gt; 0.01:
+        raise UserError(
+            "Le débit et le crédit ne s'équilibrent pas (écart : %.2f).\n"
+            "Ajustez votre sélection ou créez une écriture d'écart." % total
+        )
+
+    to_reconcile.reconcile()
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Lettrage effectué',
+            'message': '%d ligne(s) lettrée(s) sur le compte %s.' % (len(to_reconcile), accounts.display_name),
+            'type': 'success',
+            'next': {'type': 'ir.actions.act_window_close'},
+        },
+    }
+        </field>
+    </record>
+
     <!-- 6. Vue tree — Écritures à Lettrer : bouton « Lettrer » en en-tête.
          (Le menu « Actions » n'expose plus l'action custom : binding retiré.) -->
     <record id="view_lettrage_a_faire_tree" model="ir.ui.view">
@@ -116,56 +166,10 @@
         </field>
     </record>
 
-    <!-- Action serveur : Lettrer les lignes sélectionnées.
-         Déclenchée par le bouton d'en-tête de la vue « Écritures à Lettrer ».
-         Pas de binding_model_id : n'apparaît PAS dans le menu « Actions » (ni ici ni ailleurs). -->
-    <record id="action_server_lettrer_lignes" model="ir.actions.server">
-        <field name="name">Lettrer les écritures sélectionnées</field>
-        <field name="model_id" ref="account.model_account_move_line"/>
-        <field name="state">code</field>
-        <field name="code">
-if records:
-    # Filtrer : uniquement lignes non lettrées sur comptes réconciliables
-    to_reconcile = records.filtered(
-        lambda l: not l.reconciled
-        and l.account_id.reconcile
-        and l.parent_state == 'posted'
-    )
-    if not to_reconcile:
-        raise UserError("Aucune ligne lettrable dans la sélection (déjà lettrées ou compte non réconciliable).")
-
-    # Vérifier qu'elles sont sur le même compte
-    accounts = to_reconcile.account_id
-    if len(accounts) != 1:
-        raise UserError(
-            "Toutes les lignes doivent être sur le MÊME compte pour être lettrées.\n"
-            "Comptes trouvés : %s" % ", ".join(accounts.mapped('display_name'))
-        )
-
-    # Vérifier équilibre débit/crédit
-    total = sum(to_reconcile.mapped('balance'))
-    if abs(total) &gt; 0.01:
-        raise UserError(
-            "Le débit et le crédit ne s'équilibrent pas (écart : %.2f).\n"
-            "Ajustez votre sélection ou créez une écriture d'écart." % total
-        )
-
-    to_reconcile.reconcile()
-    action = {
-        'type': 'ir.actions.client',
-        'tag': 'display_notification',
-        'params': {
-            'title': 'Lettrage effectué',
-            'message': '%d ligne(s) lettrée(s) sur le compte %s.' % (len(to_reconcile), accounts.display_name),
-            'type': 'success',
-            'next': {'type': 'ir.actions.act_window_close'},
-        },
-    }
-        </field>
-    </record>
-
     <!-- Action « Délettrer » supprimée : masquée dans les deux vues à la demande.
-         Le délettrage se fait via le natif « Annuler le lettrage » dans l'Historique. -->
+         Le délettrage se fait via le natif « Annuler le lettrage » dans l'Historique.
+         L'action « Lettrer » (action_server_lettrer_lignes) est définie plus haut,
+         avant la vue qui la référence (cf. install base vierge). -->
 
     <!-- ══════════════════════════════════════════════════════════════════
          SECTION 3.1.4 — GESTION BANCAIRE
