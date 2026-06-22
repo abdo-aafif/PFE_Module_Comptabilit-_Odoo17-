@@ -205,6 +205,7 @@ jobs:
 
       - name: Run Odoo tests with coverage
         run: |
+          set -o pipefail
           cd odoo-server
           coverage run --source=../addons/${{ env.MODULE_NAME }} \
             ./odoo-bin \
@@ -223,27 +224,41 @@ jobs:
               --log-handler=odoo.tests:INFO 2>&1 | tee odoo_test.log
 
       - name: Verify no test failures
+        if: always()
         run: |
           LOG=odoo-server/odoo_test.log
 
-          # IMPORTANT : ne PAS grep "Traceback" ni "ERROR:"/"FAIL:" brut.
-          # Odoo logue la stacktrace des exceptions ATTENDUES (tests assertRaises :
-          # ValidationError, UserError, safe_eval bloque, etc.) => faux positifs.
-          #
-          # Odoo 17 logue UNE ligne autoritaire si au moins un test echoue :
-          #   "At least one test failed when loading the modules."
-          if grep -q "At least one test failed when loading the modules" "$LOG"; then
-            echo "::error::Test failures detected"
-            grep -E " (ERROR|CRITICAL) .*: (FAIL|ERROR): " "$LOG" || true
+          if [ ! -s "$LOG" ]; then
+            echo "::error::Log file empty or missing — Odoo probably crashed before writing output"
             exit 1
           fi
 
-          # Garde-fou : s'assurer qu'au moins un test a tourne.
-          # Compte les "Starting <ClassName>.test_xxx" logges par odoo.tests.stats.
+          # 1. Erreurs de chargement du module (import, XML, dependances…)
+          if grep -qE " (ERROR|CRITICAL) .* odoo\.modules" "$LOG"; then
+            echo "::error::Module loading errors detected"
+            echo "::group::Module errors"
+            grep -E " (ERROR|CRITICAL) .* odoo\.modules" "$LOG" || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          # 2. Echecs de tests reels (ligne autoritaire Odoo 17)
+          if grep -q "At least one test failed when loading the modules" "$LOG"; then
+            echo "::error::Test failures detected"
+            echo "::group::Failed tests"
+            grep -E " (ERROR|CRITICAL) .*: (FAIL|ERROR): " "$LOG" || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          # 3. Garde-fou : au moins un test a tourne
           STARTED=$(grep -cE "Starting [A-Za-z0-9_.]+\.test_[A-Za-z0-9_]+" "$LOG" || true)
           echo "::notice::Tests executes : $STARTED"
           if [ "${STARTED:-0}" -eq 0 ]; then
-            echo "::error::Aucun test execute - verifier --test-tags et tests/__init__.py"
+            echo "::error::Aucun test execute"
+            echo "::group::Dernieres 80 lignes du log"
+            tail -80 "$LOG"
+            echo "::endgroup::"
             exit 1
           fi
 
