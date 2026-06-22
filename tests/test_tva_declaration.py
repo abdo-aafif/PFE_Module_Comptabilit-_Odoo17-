@@ -215,7 +215,7 @@ class TestTvaDeclaration(TransactionCase):
 class _TvaComputeCommon(TransactionCase):
     """Setup réutilisable :
     * VAT société renseigné (devient ``<identifiantFiscal>`` dans le XML)
-    * Partenaire avec ICE (devient ``<mpIdentifiant>``)
+    * Partenaire avec IF (``<refF><if>``) et ICE (``<refF><ice>``)
     * Taxes marocaines 20 / 14 / 10 / 7 / 0 % (sale + purchase)
     * Helpers : ``_make_invoice``, ``_pay_invoice``, ``_make_declaration``
     """
@@ -283,7 +283,8 @@ class _TvaComputeCommon(TransactionCase):
         cls.partner = cls.env["res.partner"].create(
             {
                 "name": "Partenaire Test TVA",
-                "vat": "001234567000089",
+                "vat": "001234567000089",  # → <refF><if>
+                "company_registry": "000123456000078",  # ICE → <refF><ice>
                 "property_account_receivable_id": cls.receivable_account.id,
                 "property_account_payable_id": cls.payable_account.id,
             }
@@ -637,7 +638,8 @@ class TestTvaExportXml(_TvaComputeCommon):
         _, decl = self._prepare(regime="mensuel", mois="06")
         root = ET.fromstring(self._read_xml(decl))
         self.assertEqual(root.find("annee").text, "2030")
-        self.assertEqual(root.find("periode").text, "06")
+        # <periode> est un entier (DGI) : 6 et non 06
+        self.assertEqual(root.find("periode").text, "6")
 
     def test_export_xml_regime_mensuel_egal_1(self):
         _, decl = self._prepare(regime="mensuel")
@@ -654,32 +656,47 @@ class TestTvaExportXml(_TvaComputeCommon):
         root = ET.fromstring(self._read_xml(decl))
         self.assertEqual(root.find("regime").text, "2")
 
-    # ── Contenu des lignes de déduction ───────────────────────────────────
+    # ── Contenu des lignes de déduction (structure DGI : <rd>) ────────────
     def test_export_xml_montants_corrects(self):
         _, decl = self._prepare()
         root = ET.fromstring(self._read_xml(decl))
-        rd = root.find("releveDeductions/rdDeduction")
+        rd = root.find("releveDeductions/rd")
         self.assertIsNotNone(rd)
-        self.assertAlmostEqual(float(rd.find("montantHT").text), 1000.0, places=2)
-        self.assertAlmostEqual(float(rd.find("tauxTva").text), 20.0, places=2)
-        self.assertAlmostEqual(float(rd.find("montantTva").text), 200.0, places=2)
+        self.assertAlmostEqual(float(rd.find("mht").text), 1000.0, places=2)
+        self.assertAlmostEqual(float(rd.find("tx").text), 20.0, places=2)
+        self.assertAlmostEqual(float(rd.find("tva").text), 200.0, places=2)
+        self.assertAlmostEqual(float(rd.find("ttc").text), 1200.0, places=2)
 
-    def test_export_xml_ice_fournisseur(self):
+    def test_export_xml_ordre_balises_conforme(self):
+        """L'ordre des balises de <rd> respecte le cahier des charges DGI."""
         _, decl = self._prepare()
         root = ET.fromstring(self._read_xml(decl))
-        rd = root.find("releveDeductions/rdDeduction")
-        self.assertEqual(rd.find("mpIdentifiant").text, "001234567000089")
+        rd = root.find("releveDeductions/rd")
+        self.assertEqual(
+            [c.tag for c in rd],
+            ["ord", "num", "des", "mht", "tva", "ttc", "refF", "tx", "mp", "dpai", "dfac"],
+        )
+        self.assertEqual([c.tag for c in rd.find("refF")], ["if", "nom", "ice"])
+        self.assertIsNotNone(rd.find("mp/id"))
+
+    def test_export_xml_fournisseur_if_et_ice(self):
+        """<refF>: IF = vat partenaire, ICE = company_registry."""
+        _, decl = self._prepare()
+        root = ET.fromstring(self._read_xml(decl))
+        reff = root.find("releveDeductions/rd/refF")
+        self.assertEqual(reff.find("if").text, "001234567000089")
+        self.assertEqual(reff.find("ice").text, "000123456000078")
 
     def test_export_xml_date_paiement_egale_max_date(self):
-        """``datePaiement`` doit être la date du lettrage, pas celle de la facture."""
+        """``dpai`` doit être la date du lettrage, pas celle de la facture."""
         _, decl = self._prepare(
             invoice_date=date(2030, 6, 5),
             payment_date=date(2030, 6, 25),
         )
         root = ET.fromstring(self._read_xml(decl))
-        rd = root.find("releveDeductions/rdDeduction")
-        self.assertEqual(rd.find("dateFacture").text, "2030-06-05")
-        self.assertEqual(rd.find("datePaiement").text, "2030-06-25")
+        rd = root.find("releveDeductions/rd")
+        self.assertEqual(rd.find("dfac").text, "2030-06-05")
+        self.assertEqual(rd.find("dpai").text, "2030-06-25")
 
     def test_export_xml_filtre_deductibles_seulement(self):
         """Le Relevé des Déductions n'inclut que les achats (pas les ventes)."""
@@ -694,9 +711,9 @@ class TestTvaExportXml(_TvaComputeCommon):
         decl.action_export_simpl_tva()
 
         root = ET.fromstring(self._read_xml(decl))
-        rds = root.findall("releveDeductions/rdDeduction")
+        rds = root.findall("releveDeductions/rd")
         self.assertEqual(len(rds), 1)
-        self.assertAlmostEqual(float(rds[0].find("montantHT").text), 1000.0, places=2)
+        self.assertAlmostEqual(float(rds[0].find("mht").text), 1000.0, places=2)
 
     def test_export_xml_caracteres_speciaux_echappes(self):
         """Caractères XML spéciaux (& < >) dans le nom du partenaire échappés."""
@@ -705,7 +722,7 @@ class TestTvaExportXml(_TvaComputeCommon):
         xml_str = self._read_xml(decl)
         # Doit rester parsable
         root = ET.fromstring(xml_str)
-        designation = root.find("releveDeductions/rdDeduction/designationBien").text
+        designation = root.find("releveDeductions/rd/des").text
         self.assertIn("Tests & Co", designation)
         # Aucun '&' ne doit subsister hors d'une entité (&amp;, &lt;, &gt;, etc.)
         residual = xml_str.replace("&amp;", "").replace("&lt;", "").replace("&gt;", "")

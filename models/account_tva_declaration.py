@@ -295,6 +295,13 @@ class AccountTvaDeclaration(models.Model):
             rec.line_ids.unlink()
             rec.detail_ids.unlink()
 
+            # Un recalcul invalide tout export SIMPL-TVA précédent : on purge le
+            # fichier généré pour éviter de télécharger un XML périmé tant que
+            # l'utilisateur n'a pas relancé l'export.
+            rec.edi_file_data = False
+            rec.edi_file_name = False
+            rec.edi_generated_on = False
+
             total_collectee = 0.0
             total_deductible = 0.0
             ventilation = {}  # { ('collectee'|'deductible', taux): montant_tva }
@@ -445,10 +452,37 @@ class AccountTvaDeclaration(models.Model):
                 total_deductible,
             )
 
+    def _simpl_tva_payment_mode_id(self, det):
+        """Code « mode de paiement » DGI pour la balise <mp><id> du relevé.
+
+        Codes DGI : 1 espèce · 2 chèque · 3 prélèvement · 4 virement ·
+        5 effet · 6 compensation · 7 autres.
+
+        Déduit depuis le journal de la contrepartie lettrée (le côté du
+        lettrage qui n'est pas la facture). Faute d'information plus fine
+        (chèque vs virement), on retient le défaut bancaire « virement ».
+        """
+        partial = det.partial_id
+        inv = det.invoice_id
+        if partial and inv:
+            for ml in (partial.debit_move_id, partial.credit_move_id):
+                if ml and ml.move_id and ml.move_id != inv:
+                    jtype = ml.move_id.journal_id.type
+                    if jtype == "cash":
+                        return 1  # espèce
+                    if jtype == "bank":
+                        return 4  # virement (défaut bancaire)
+                    return 7  # OD / divers → autres
+        return 7
+
     def action_export_simpl_tva(self):
         """Génère le XML SIMPL-TVA (Relevé des Déductions) à partir des
         détails d'audit déjà calculés (cash basis) et le rend téléchargeable
         directement depuis la déclaration.
+
+        Structure conforme au « Cahier des charges EDI SIMPL-TVA — Relevé des
+        déductions » (DGI Maroc) : balises <rd>/<ord>/<num>/<des>/<mht>/<tva>/
+        <ttc>/<refF>{<if>,<nom>,<ice>}/<tx>/<mp>{<id>}/<dpai>/<dfac>.
         """
         self.ensure_one()
 
@@ -478,48 +512,72 @@ class AccountTvaDeclaration(models.Model):
         deductibles = self.detail_ids.filtered(lambda d: d.type_tva == "deductible")
 
         lignes_xml_parts = []
+        ordre = 0
         for det in deductibles:
             inv = det.invoice_id
             if not inv:
                 continue
 
+            ordre += 1
             taux = det.taux or 0.0
             tva_amount = abs(det.tva_amount or 0.0)
-            # Base HT correspondant au montant TVA imputé sur la période
+            # Base HT correspondant au montant TVA imputé sur la période, puis TTC
             montant_ht = tva_amount / (taux / 100.0) if taux else 0.0
+            montant_ttc = montant_ht + tva_amount
 
-            ice_fournisseur = (inv.partner_id.vat or "000000000000000").strip()
-            ref_facture = inv.ref or inv.name or "SANS_REF"
-            date_fact = inv.invoice_date.strftime("%Y-%m-%d") if inv.invoice_date else ""
+            partner = inv.partner_id
+            num_facture = inv.ref or inv.name or "SANS_REF"
+            designation = _("Achats %s") % (partner.name or "")
+            # <if> = Identifiant Fiscal fournisseur ; <ice> = ICE fournisseur.
+            # Odoo standard ne fournit pas de champ ICE dédié : on utilise
+            # company_registry (usage courant au Maroc pour stocker l'ICE).
+            fourn_if = partner.vat or ""
+            fourn_ice = partner.company_registry or ""
+            mode_paiement = self._simpl_tva_payment_mode_id(det)
 
+            date_fac = inv.invoice_date.strftime("%Y-%m-%d") if inv.invoice_date else ""
             # Date de paiement : max_date du lettrage si dispo, sinon date_end
-            date_paiement = ""
             if det.partial_id and det.partial_id.max_date:
                 date_paiement = det.partial_id.max_date.strftime("%Y-%m-%d")
             else:
                 date_paiement = self.date_end.strftime("%Y-%m-%d")
 
-            designation = _("Achats %s") % (inv.partner_id.name or "")
-
+            # <prorata> volontairement omis : optionnel, la DGI considère 100 %
+            # par défaut (cf. cahier des charges v2.0, préface).
             lignes_xml_parts.append(f"""
-        <rdDeduction>
-            <mpIdentifiant>{xml_escape(ice_fournisseur)}</mpIdentifiant>
-            <designationBien>{xml_escape(designation)}</designationBien>
-            <refFacture>{xml_escape(ref_facture)}</refFacture>
-            <dateFacture>{date_fact}</dateFacture>
-            <montantHT>{montant_ht:.2f}</montantHT>
-            <tauxTva>{taux:.2f}</tauxTva>
-            <montantTva>{tva_amount:.2f}</montantTva>
-            <datePaiement>{date_paiement}</datePaiement>
-        </rdDeduction>""")
+        <rd>
+            <ord>{ordre}</ord>
+            <num>{xml_escape(num_facture)}</num>
+            <des>{xml_escape(designation)}</des>
+            <mht>{montant_ht:.2f}</mht>
+            <tva>{tva_amount:.2f}</tva>
+            <ttc>{montant_ttc:.2f}</ttc>
+            <refF>
+                <if>{xml_escape(fourn_if)}</if>
+                <nom>{xml_escape(partner.name or "")}</nom>
+                <ice>{xml_escape(fourn_ice)}</ice>
+            </refF>
+            <tx>{taux:.2f}</tx>
+            <mp>
+                <id>{mode_paiement}</id>
+            </mp>
+            <dpai>{date_paiement}</dpai>
+            <dfac>{date_fac}</dfac>
+        </rd>""")
 
         lignes_xml = "".join(lignes_xml_parts) or "\n        <!-- Aucune deduction sur cette periode -->"
+
+        # <periode> : entier (6 et non 06) conformément au cahier des charges DGI.
+        try:
+            periode_xml = int(periode_dgi)
+        except (TypeError, ValueError):
+            periode_xml = periode_dgi
 
         xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <DeclarationReleveDeduction>
     <identifiantFiscal>{xml_escape(company_vat)}</identifiantFiscal>
     <annee>{self.periode_annee}</annee>
-    <periode>{periode_dgi}</periode>
+    <periode>{periode_xml}</periode>
     <regime>{regime_dgi}</regime>
     <releveDeductions>{lignes_xml}
     </releveDeductions>
@@ -529,6 +587,21 @@ class AccountTvaDeclaration(models.Model):
             file_label = f"T{periode_dgi}_{self.periode_annee}"
         else:
             file_label = f"{self.periode_annee}_{periode_dgi}"
+
+        # IMPORTANT : on supprime explicitement l'attachement précédent du champ
+        # avant de réécrire. Un champ Binary(attachment=True) peut, selon l'état du
+        # cache ORM au moment du write, créer un attachement EN DOUBLON au lieu de
+        # remplacer l'existant. Comme ir.attachment._order = 'id desc', la relecture
+        # (Binary.read) renvoie alors le plus ANCIEN attachement → le fichier
+        # téléchargé restait celui du premier export malgré un recalcul de la TVA.
+        # En purgeant d'abord, le write recrée un attachement unique et à jour.
+        self.env["ir.attachment"].sudo().search(
+            [
+                ("res_model", "=", self._name),
+                ("res_field", "=", "edi_file_data"),
+                ("res_id", "=", self.id),
+            ]
+        ).unlink()
 
         self.write(
             {

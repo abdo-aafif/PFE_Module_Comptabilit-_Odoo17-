@@ -175,6 +175,34 @@ class FinancialStatementWizard(models.TransientModel):
         )
         return self.env.cr.fetchone()[0] or 0.0
 
+    def _period_credits(self, prefixes, date_from, date_to, company_id):
+        """Sum of credit movements (gross) on accounts matching any prefix during the period.
+
+        Symétrique de ``_period_debits`` : sert à présenter les flux de
+        financement pour leur montant BRUT (§5212 de l'Avis n°5 du CNC), p.ex.
+        les émissions d'emprunts (crédits de 141/148) séparément des
+        remboursements (débits de 141/148).
+        """
+        if not prefixes:
+            return 0.0
+        like_conds = " OR ".join(["a.code LIKE %s"] * len(prefixes))
+        params = [company_id, date_from, date_to] + [p + "%" for p in prefixes]
+        self.env.cr.execute(
+            f"""
+            SELECT COALESCE(SUM(l.credit), 0)
+            FROM account_move_line l
+            JOIN account_move    m ON l.move_id    = m.id
+            JOIN account_account a ON l.account_id = a.id
+            WHERE m.state = 'posted'
+              AND l.company_id = %s
+              AND l.date >= %s
+              AND l.date <= %s
+              AND ({like_conds})
+        """,
+            params,
+        )
+        return self.env.cr.fetchone()[0] or 0.0
+
     def _compute_resultat_net(self, date_from, date_to, company_id):
         """Résultat net de la période = Produits − Charges (mêmes prefixes que le CPC)."""
 
@@ -790,20 +818,33 @@ class FinancialStatementWizard(models.TransientModel):
         res_net = self._compute_resultat_net(df, dt, cid)
         dotations = C(["619", "639", "659"])
         reprises = P(["719", "739", "759"])
+        # Reprise de subvention d'investissement (757) : quote-part virée au
+        # résultat. Produit NON monétaire (le cash a été encaissé à l'octroi de
+        # la subvention, capté en financement via 131/135) → on le neutralise.
+        rep_subv = P(["757"])
         # Reclassement des cessions : la VNC (651) et le produit (751) sont dans
         # le résultat net mais leur cash réel passe en flux d'investissement.
         # On les neutralise donc dans l'opérationnel.
         vnc_cessions = C(["651"])
         prod_cessions = P(["751"])
 
+        # ── Capacité d'autofinancement (CAF) ─────────────────────
+        # Palier intermédiaire (méthode indirecte, trame 5220 du CNC) : résultat
+        # net épuré de tous les éléments sans incidence sur la trésorerie, AVANT
+        # prise en compte des décalages de paiement (variation du BFR).
+        caf = res_net + dotations - reprises - rep_subv + vnc_cessions - prod_cessions
+
         # BFR: increase in asset = use of cash → negate delta
+        # Note : les provisions sur actif circulant (394/395) sont volontairement
+        # EXCLUES ici — elles seraient comptées deux fois (déjà réintégrées via
+        # les dotations 619/639/659 ci-dessus). Cf. note (1) du modèle 5220.
         d_clients = -delta(["341", "342", "343", "345", "346", "348", "349"])
         d_stocks = -delta(["311", "312", "313", "314", "315"])
         d_fourn = -delta(["441", "442", "443", "444", "445", "446", "448", "449"])
-        d_autres_bfr = -delta(["370", "394", "395", "450", "470"])
+        d_autres_bfr = -delta(["370", "450", "470"])
         bfr = d_clients + d_stocks + d_fourn + d_autres_bfr
 
-        flux_expl = res_net + dotations - reprises + vnc_cessions - prod_cessions + bfr  # neutralisation cessions
+        flux_expl = caf + bfr
 
         lines += [
             # Le titre de section porte directement le total net (comme le CPC) :
@@ -812,8 +853,10 @@ class FinancialStatementWizard(models.TransientModel):
             L("Résultat net de l'exercice", res_net, lvl=1),
             L("Dotations aux amortissements et provisions", dotations, lvl=1),
             L("Reprises sur provisions", -reprises, lvl=1),
+            L("Reprise de subvention d'investissement", -rep_subv, lvl=1),
             L("VNC des immobilisations cédées (réintégration)", vnc_cessions, lvl=1),
             L("Produits de cession (reclassés en invest.)", -prod_cessions, lvl=1),
+            L("CAPACITÉ D'AUTOFINANCEMENT (CAF)", caf, lvl=1, total=True, bold=True),
             L("Variation des créances clients", d_clients, lvl=1),
             L("Variation des stocks", d_stocks, lvl=1),
             L("Variation des dettes fournisseurs", d_fourn, lvl=1),
@@ -862,16 +905,22 @@ class FinancialStatementWizard(models.TransientModel):
         d_cap = -delta(["111", "112", "113", "114", "115", "118"])
         # Subventions d'investissement reçues (131, 135) = flux d'encaissement entrant
         d_subv = -delta(["131", "135"])
-        d_dettes = -delta(["141", "148"])
+        # Financement présenté en BRUT (§5212 de l'Avis n°5 du CNC) : émissions
+        # d'emprunts (crédits de 141/148) et remboursements (débits de 141/148)
+        # sur deux lignes distinctes. Contrôle : emissions − remboursements =
+        # -delta(141,148) → le net est préservé, le brut devient visible.
+        emissions = self._period_credits(["141", "148"], df, dt, cid)
+        remboursements = self._period_debits(["141", "148"], df, dt, cid)
         # Dividendes payés = mouvements débiteurs de 4465 (paiements de dividendes)
         dividendes = self._period_debits(["4465"], df, dt, cid)
-        flux_fin = d_cap + d_subv + d_dettes - dividendes
+        flux_fin = d_cap + d_subv + emissions - remboursements - dividendes
 
         lines += [
             L("C.  FLUX DE TRÉSORERIE LIÉ AU FINANCEMENT", flux_fin, lvl=0, total=True, bold=True),
             L("Augmentations de capital", d_cap, lvl=1),
             L("Subventions d'investissement reçues", d_subv, lvl=1),
-            L("Emprunts et dettes de financement", d_dettes, lvl=1),
+            L("Émissions d'emprunts", emissions, lvl=1),
+            L("Remboursements d'emprunts", -remboursements, lvl=1),
             L("Dividendes versés", -dividendes, lvl=1),
         ]
 

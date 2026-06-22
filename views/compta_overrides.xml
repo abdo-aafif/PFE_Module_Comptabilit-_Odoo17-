@@ -14,15 +14,47 @@
         <field name="view_id" ref="account.view_move_tree"/>
     </record>
 
-    <!-- 6. Vue tree partagée pour le Lettrage -->
-    <record id="view_account_move_line_lettrage_tree" model="ir.ui.view">
-        <field name="name">account.move.line.lettrage.tree</field>
+    <!-- 6. Vue tree — Écritures à Lettrer : bouton « Lettrer » en en-tête.
+         (Le menu « Actions » n'expose plus l'action custom : binding retiré.) -->
+    <record id="view_lettrage_a_faire_tree" model="ir.ui.view">
+        <field name="name">account.move.line.lettrage.a.faire.tree</field>
         <field name="model">account.move.line</field>
         <field name="priority">99</field>
         <field name="arch" type="xml">
-            <tree string="Lettrage des Comptes"
+            <tree string="Écritures à Lettrer"
                   create="false" delete="false" edit="false"
-                  decoration-warning="not reconciled and amount_residual != 0"
+                  decoration-warning="not reconciled and amount_residual != 0">
+                <header>
+                    <button name="%(action_server_lettrer_lignes)d" type="action"
+                            string="Lettrer les écritures sélectionnées"/>
+                </header>
+                <field name="date"/>
+                <field name="move_id" string="Pièce"/>
+                <field name="journal_id" string="Journal" optional="show"/>
+                <field name="account_id" string="Compte"/>
+                <field name="partner_id" string="Partenaire"/>
+                <field name="name" string="Libellé" optional="show"/>
+                <field name="debit" sum="Total Débit"/>
+                <field name="credit" sum="Total Crédit"/>
+                <field name="amount_residual" string="Solde restant" sum="Solde"/>
+                <field name="full_reconcile_id" string="Lettrage #"/>
+                <field name="reconciled" column_invisible="1"/>
+                <field name="balance" column_invisible="1"/>
+                <field name="company_id" column_invisible="1"/>
+                <field name="company_currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 6.bis Vue tree — Historique du Lettrage : pas de bouton custom.
+         Le natif « Annuler le lettrage » (Unreconcile) reste dans le menu « Actions ». -->
+    <record id="view_lettrage_historique_tree" model="ir.ui.view">
+        <field name="name">account.move.line.lettrage.historique.tree</field>
+        <field name="model">account.move.line</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree string="Historique du Lettrage"
+                  create="false" delete="false" edit="false"
                   decoration-success="reconciled">
                 <field name="date"/>
                 <field name="move_id" string="Pièce"/>
@@ -42,12 +74,12 @@
         </field>
     </record>
 
-    <!-- 6.bis Action : Écritures À Lettrer (non lettrées, groupées par partenaire) -->
+    <!-- 6.ter Action : Écritures À Lettrer (non lettrées, groupées par partenaire) -->
     <record id="action_compta_lettrage_comptes" model="ir.actions.act_window">
         <field name="name">Écritures à Lettrer</field>
         <field name="res_model">account.move.line</field>
         <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_account_move_line_lettrage_tree"/>
+        <field name="view_id" ref="view_lettrage_a_faire_tree"/>
         <field name="domain">[
             ('account_id.reconcile', '=', True),
             ('parent_state', '=', 'posted'),
@@ -61,17 +93,17 @@
                 <b>Comment lettrer ?</b><br/>
                 1. Dépliez un partenaire<br/>
                 2. Cochez la facture (Débit) + son paiement (Crédit)<br/>
-                3. Menu <b>Action → Lettrer les écritures sélectionnées</b>
+                3. Cliquez le bouton <b>Lettrer les écritures sélectionnées</b> en haut de la liste
             </p>
         </field>
     </record>
 
-    <!-- 6.ter Action : Historique Lettrage (lettrées, groupées par numéro de lettrage) -->
+    <!-- 6.quater Action : Historique Lettrage (lettrées, groupées par numéro de lettrage) -->
     <record id="action_compta_lettrage_historique" model="ir.actions.act_window">
         <field name="name">Historique du Lettrage</field>
         <field name="res_model">account.move.line</field>
         <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_account_move_line_lettrage_tree"/>
+        <field name="view_id" ref="view_lettrage_historique_tree"/>
         <field name="domain">[
             ('account_id.reconcile', '=', True),
             ('parent_state', '=', 'posted'),
@@ -84,12 +116,12 @@
         </field>
     </record>
 
-    <!-- 6.ter Action serveur : Lettrer les lignes sélectionnées -->
+    <!-- Action serveur : Lettrer les lignes sélectionnées.
+         Déclenchée par le bouton d'en-tête de la vue « Écritures à Lettrer ».
+         Pas de binding_model_id : n'apparaît PAS dans le menu « Actions » (ni ici ni ailleurs). -->
     <record id="action_server_lettrer_lignes" model="ir.actions.server">
         <field name="name">Lettrer les écritures sélectionnées</field>
         <field name="model_id" ref="account.model_account_move_line"/>
-        <field name="binding_model_id" ref="account.model_account_move_line"/>
-        <field name="binding_view_types">list</field>
         <field name="state">code</field>
         <field name="code">
 if records:
@@ -132,30 +164,8 @@ if records:
         </field>
     </record>
 
-    <!-- 6.quater Action serveur : Délettrer (annuler le lettrage) -->
-    <record id="action_server_delettrer_lignes" model="ir.actions.server">
-        <field name="name">Délettrer les écritures sélectionnées</field>
-        <field name="model_id" ref="account.model_account_move_line"/>
-        <field name="binding_model_id" ref="account.model_account_move_line"/>
-        <field name="binding_view_types">list</field>
-        <field name="state">code</field>
-        <field name="code">
-if records:
-    to_unreconcile = records.filtered(lambda l: l.reconciled or l.matched_debit_ids or l.matched_credit_ids)
-    if not to_unreconcile:
-        raise UserError("Aucune ligne lettrée dans la sélection.")
-    to_unreconcile.remove_move_reconcile()
-    action = {
-        'type': 'ir.actions.client',
-        'tag': 'display_notification',
-        'params': {
-            'title': 'Délettrage effectué',
-            'message': '%d ligne(s) délettrée(s).' % len(to_unreconcile),
-            'type': 'warning',
-        },
-    }
-        </field>
-    </record>
+    <!-- Action « Délettrer » supprimée : masquée dans les deux vues à la demande.
+         Le délettrage se fait via le natif « Annuler le lettrage » dans l'Historique. -->
 
     <!-- ══════════════════════════════════════════════════════════════════
          SECTION 3.1.4 — GESTION BANCAIRE

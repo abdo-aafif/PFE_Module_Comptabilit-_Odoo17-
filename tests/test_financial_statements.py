@@ -442,6 +442,52 @@ class TestFluxTresorerie(_FinancialTestCommon):
         aug_cap = self._find_amount(wiz.flux_line_ids, "Augmentations de capital")
         self.assertAlmostEqual(aug_cap, 50000.0, places=2)
 
+    def test_caf_egale_resultat_net_sans_retraitement(self):
+        """Sans dotation/reprise/cession, la CAF = résultat net (palier 5220)."""
+        self._make_revenue(date(2030, 6, 15), 50000.0)
+        self._make_expense(date(2030, 7, 20), 20000.0)
+        wiz = self._make_wizard()
+        wiz.action_compute_flux()
+        res_net = self._find_amount(wiz.flux_line_ids, "Résultat net de l'exercice")
+        caf = self._find_amount(wiz.flux_line_ids, "CAPACITÉ D'AUTOFINANCEMENT (CAF)")
+        self.assertAlmostEqual(caf, res_net, places=2)
+        self.assertAlmostEqual(caf, 30000.0, places=2)
+
+    def test_financement_emprunt_presente_en_brut(self):
+        """Émissions et remboursements d'emprunts sur deux lignes distinctes (§5212)."""
+        emprunt = self.env["account.account"].create({
+            "code": "148Z",
+            "name": "Test Emprunt",
+            "account_type": "liability_non_current",
+            "company_id": self.company.id,
+        })
+        # Émission : encaissement de l'emprunt (débit banque / crédit emprunt)
+        self._make_move(date(2030, 2, 1), self.account_bank, emprunt, 80000.0, ref="Émission emprunt")
+        # Remboursement partiel (débit emprunt / crédit banque)
+        self._make_move(date(2030, 9, 1), emprunt, self.account_bank, 30000.0, ref="Remboursement emprunt")
+        wiz = self._make_wizard()
+        wiz.action_compute_flux()
+        emissions = self._find_amount(wiz.flux_line_ids, "Émissions d'emprunts")
+        remboursements = self._find_amount(wiz.flux_line_ids, "Remboursements d'emprunts")
+        self.assertAlmostEqual(emissions, 80000.0, places=2)        # entrée de cash
+        self.assertAlmostEqual(remboursements, -30000.0, places=2)  # sortie de cash
+
+    def test_reprise_subvention_neutralisee_dans_caf(self):
+        """La reprise de subvention (757), produit non monétaire, est retirée de la CAF."""
+        rep_subv_acc = self.env["account.account"].create({
+            "code": "757Z",
+            "name": "Test Reprise subvention d'investissement",
+            "account_type": "income_other",
+            "company_id": self.company.id,
+        })
+        # Quote-part de subvention virée au résultat (crédit 757)
+        self._make_move(date(2030, 5, 1), self.account_bank, rep_subv_acc, 10000.0, ref="Reprise subv")
+        wiz = self._make_wizard()
+        wiz.action_compute_flux()
+        ligne = self._find_amount(wiz.flux_line_ids, "Reprise de subvention d'investissement")
+        # Neutralisation : le produit non monétaire est soustrait (signe négatif)
+        self.assertAlmostEqual(ligne, -10000.0, places=2)
+
 
 # =============================================================================
 #  3.2.1.E — États financiers personnalisables (Report Builder)
